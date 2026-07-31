@@ -79,15 +79,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Send Emails via Resend
+    // 4. Send Emails via Resend with Dashboard Links
     const adminEmail = process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com';
+    const dashboardUrl = 'https://roadecho.vercel.app/dashboard';
+    const adminDashboardUrl = 'https://roadecho.vercel.app/admin';
 
     // Admin audit notification
     await resend.emails.send({
       from: 'RoadEcho <onboarding@resend.dev>',
       to: [adminEmail],
       subject: `[RoadEcho Alert] New Message for ${country}:${cleanState} - ${cleanPlate}`,
-      text: `New Message Queued\n\nPlate: ${cleanPlate}\nLocation: ${cleanState}, ${country}\nSender: ${email}\nMessage: ${message}`
+      text: `New Message Queued\n\nPlate: ${cleanPlate}\nLocation: ${cleanState}, ${country}\nSender: ${email}\nMessage: ${message}\n\nView Admin Command Center: ${adminDashboardUrl}`
     });
 
     // Email to the claimed plate owner (if someone claimed it)
@@ -96,7 +98,15 @@ export async function POST(request: Request) {
         from: 'RoadEcho <onboarding@resend.dev>',
         to: [ownerEmail],
         subject: `[RoadEcho] New message received for your plate ${cleanPlate} (${cleanState})`,
-        text: `You have received a new secure message for your claimed plate ${cleanPlate}. Log in to your RoadEcho dashboard to view it.`
+        text: `You have received a new secure message for your claimed plate ${cleanPlate} (${cleanState}). Log in to your RoadEcho vault dashboard to view and unlock it: ${dashboardUrl}`,
+        html: `
+          <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px;">
+            <h2 style="color: #06b6d4; margin-top: 0;">New Message Received</h2>
+            <p>You have received a new secure message for your claimed plate <strong>${cleanPlate} (${cleanState})</strong>.</p>
+            <p>Log in to your RoadEcho vault dashboard to view and unlock it:</p>
+            <a href="${dashboardUrl}" style="display: inline-block; background-color: #06b6d4; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 12px;">Open Plate Vault Dashboard</a>
+          </div>
+        `
       });
     }
 
@@ -105,7 +115,7 @@ export async function POST(request: Request) {
       from: 'RoadEcho <onboarding@resend.dev>',
       to: [email],
       subject: `Your secure message to ${country}:${cleanState} ${cleanPlate} has been queued`,
-      text: `Message Dispatched\n\nYour message to ${cleanPlate} has been securely queued.`
+      text: `Message Dispatched\n\nYour message to ${cleanPlate} has been securely queued. Manage your own plates or view your vault dashboard: ${dashboardUrl}`
     });
 
     return NextResponse.json({ success: true });
