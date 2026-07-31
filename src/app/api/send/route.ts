@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { agreedToTerms } = body;
     
-    // 1. Enforce strict server-side terms validation (Legal Hardening)
+    // 1. Enforce strict server-side terms validation
     if (!agreedToTerms) {
       return NextResponse.json({ error: 'You must agree to the terms and digital delivery policy before sending.' }, { status: 400 });
     }
@@ -34,12 +34,12 @@ export async function POST(request: Request) {
       }
     }
 
-    const country = body.country || body.nation || 'USA';
-    const stateRegion = body.stateRegion || body.state_region || body.state;
-    const email = body.email || body.sender_email || body.userEmail || body.mail;
-    const message = body.message || body.text;
+    const country = body.country || body.nation || body.countryInput || 'USA';
+    const stateRegion = body.stateRegion || body.state_region || body.state || body.stateInput || body.province || body.region;
+    const email = body.email || body.sender_email || body.userEmail || body.mail || body.senderEmail;
+    const message = body.message || body.text || body.msg;
 
-    // 2. Strict input validation (removed silent fallbacks to prevent mislabeling)
+    // 2. Strict input validation
     if (!licensePlate) {
       return NextResponse.json({ error: 'Database Error: license_plate is missing.' }, { status: 400 });
     }
@@ -66,10 +66,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Message flagged by moderation.' }, { status: 400 });
     }
 
-    // 4. Generate Zero-Knowledge Cryptographic Hash (DPPA Shield)
+    // 4. Generate Zero-Knowledge Cryptographic Hash
     const plateHash = getPlateHash(cleanPlate, cleanState, cleanCountry);
 
-    // 5. Save Hashed Message to Supabase Database with Legal Audit Trail
+    // 5. Save Hashed Message to Supabase Database
     const { error: dbError } = await supabase.from('messages').insert([
       {
         license_plate: plateHash,
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Database Error: ${dbError.message}` }, { status: 500 });
     }
 
-    // 6. Find if the plate is claimed to notify the actual vehicle owner using cryptographic hash
+    // 6. Find if the plate is claimed to notify the owner
     let ownerEmail: string | null = null;
     const { data: plateOwnerData } = await supabase
       .from('user_plates')
@@ -102,18 +102,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // 7. Send Emails via Resend with Styled Dark Theme and Logo
+    // 7. Send Emails via Resend
     const adminEmail = process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com';
     const dashboardUrl = 'https://roadecho.vercel.app/dashboard';
     const adminDashboardUrl = 'https://roadecho.vercel.app/admin';
     const logoUrl = 'https://roadecho.vercel.app/logo.PNG';
 
-    // Admin audit notification
     await resend.emails.send({
       from: 'RoadEcho <onboarding@resend.dev>',
       to: [adminEmail],
-      subject: `[RoadEcho Alert] New Message for ${cleanCountry}:${cleanState} - [Secured Hash]`,
-      text: `New Message Queued\n\nPlate Hash: ${plateHash}\nLocation: ${cleanState}, ${cleanCountry}\nSender: ${email}\nMessage: ${message}\n\nView Admin Command Center: ${adminDashboardUrl}`,
+      subject: `[RoadEcho Alert] New Message for ${cleanCountry}:${cleanState}`,
+      text: `New Message Queued\n\nPlate Hash: ${plateHash}\nLocation: ${cleanState}, ${cleanCountry}\nSender: ${email}\nMessage: ${message}`,
       html: `
         <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
           <div style="text-align: center; margin-bottom: 20px;">
@@ -129,13 +128,12 @@ export async function POST(request: Request) {
       `
     });
 
-    // Email to the claimed plate owner (if someone claimed it)
     if (ownerEmail) {
       await resend.emails.send({
         from: 'RoadEcho <onboarding@resend.dev>',
         to: [ownerEmail],
         subject: `[RoadEcho] New message received for your registered plate (${cleanState})`,
-        text: `You have received a new secure message for your claimed plate in ${cleanState}. Log in to your RoadEcho vault dashboard to view and unlock it: ${dashboardUrl}`,
+        text: `You have received a new secure message for your claimed plate in ${cleanState}. Log in to view it: ${dashboardUrl}`,
         html: `
           <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
             <div style="text-align: center; margin-bottom: 20px;">
@@ -143,27 +141,24 @@ export async function POST(request: Request) {
             </div>
             <h2 style="color: #06b6d4; margin-top: 0; font-size: 18px;">New Message Received</h2>
             <p>You have received a new secure message for your claimed vehicle plate in <strong>${cleanState}</strong>.</p>
-            <p>Log in to your RoadEcho vault dashboard to view and unlock it:</p>
             <a href="${dashboardUrl}" style="display: inline-block; background-color: #06b6d4; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 12px;">Open Plate Vault Dashboard</a>
           </div>
         `
       });
     }
 
-    // Confirmation to the sender
     await resend.emails.send({
       from: 'RoadEcho <onboarding@resend.dev>',
       to: [email],
       subject: `Your secure message to ${cleanCountry}:${cleanState} has been queued`,
-      text: `Message Dispatched\n\nYour message has been securely queued via zero-knowledge hashing. Manage your own plates or view your vault dashboard: ${dashboardUrl}`,
+      text: `Message Dispatched\n\nYour message has been securely queued. View dashboard: ${dashboardUrl}`,
       html: `
         <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
           <div style="text-align: center; margin-bottom: 20px;">
             <img src="${logoUrl}" alt="RoadEcho Logo" style="height: 48px; object-fit: contain;" />
           </div>
           <h2 style="color: #06b6d4; margin-top: 0; font-size: 18px;">Message Dispatched</h2>
-          <p>Your secure message to location <strong>${cleanState}, ${cleanCountry}</strong> has been successfully queued using zero-knowledge encryption.</p>
-          <p>Want to claim your own plates or monitor incoming messages?</p>
+          <p>Your secure message to location <strong>${cleanState}, ${cleanCountry}</strong> has been successfully queued.</p>
           <a href="${dashboardUrl}" style="display: inline-block; background-color: #06b6d4; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 12px;">Open Plate Vault Dashboard</a>
         </div>
       `
