@@ -50,11 +50,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Maximum limit of 3 claimed plates reached.' }, { status: 400 });
     }
 
-    // 3. Insert clean readable plate into Supabase database for clean UI display
+    // 3. Insert secure SHA-256 Hash into Supabase (Zero-Knowledge Architecture: No raw plates stored)
     const { error: insertError } = await supabase.from('user_plates').insert([
       {
         user_id: user.id,
-        plate_number: cleanPlate,
+        plate_number: plateHash, // STORE HASH, NEVER RAW PLATE
         state: cleanState,
       }
     ]);
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
       from: 'RoadEcho System <onboarding@resend.dev>',
       to: [adminEmail],
       subject: `[Audit] New Plate Claimed (${cleanState}) - [Secured Hash]`,
-      text: `User (${user.email || 'Unknown'}) successfully claimed a plate in ${cleanState}. Access dashboard: ${adminDashboardUrl}`,
+      text: `User (${user.email || 'Unknown'}) successfully claimed a plate hash in ${cleanState}. Access dashboard: ${adminDashboardUrl}`,
       html: `
         <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
           <div style="text-align: center; margin-bottom: 20px;">
