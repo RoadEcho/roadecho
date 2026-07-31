@@ -43,7 +43,7 @@ export default function Home() {
         {/* Logo Display */}
         <div className="flex justify-center mb-6">
           <img 
-            src="/logo.png" 
+            src="/logo.PNG" 
             alt="RoadEcho Logo" 
             className="w-20 h-20 object-contain rounded-xl shadow-lg border border-slate-700 bg-slate-950 p-1" 
           />
