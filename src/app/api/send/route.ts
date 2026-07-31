@@ -14,9 +14,21 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     
-    const licensePlate = body.licensePlate || body.license_plate || body.plate || body.licencePlate;
+    // Automatically find the license plate regardless of what key name the form uses
+    let licensePlate = body.licensePlate || body.license_plate || body.plate || body.licencePlate || body.license;
+    if (!licensePlate) {
+      const keys = Object.keys(body);
+      for (const key of keys) {
+        const val = body[key];
+        if (typeof val === 'string' && val.trim().length > 0 && key !== 'email' && key !== 'country' && key !== 'stateRegion' && key !== 'message' && key !== 'sender_email') {
+          licensePlate = val;
+          break;
+        }
+      }
+    }
+
     const country = body.country || 'USA';
-    const stateRegion = body.stateRegion || body.state_region || body.state;
+    const stateRegion = body.stateRegion || body.state_region || body.state || 'DE';
     const email = body.email || body.sender_email || body.userEmail;
     const message = body.message || body.text;
 
