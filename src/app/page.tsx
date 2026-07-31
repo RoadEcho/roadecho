@@ -40,13 +40,13 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-slate-950 text-white">
       <div className="w-full max-w-md p-8 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md">
         
-        {/* Logo Display with Watermark Cropped Out */}
+        {/* Full Logo Display with Watermark Cropped */}
         <div className="flex justify-center mb-6">
-          <div className="w-48 h-20 overflow-hidden relative rounded-2xl border border-slate-800 shadow-xl flex items-center justify-center bg-slate-950">
+          <div className="w-56 h-32 overflow-hidden relative rounded-2xl border border-slate-800 shadow-xl flex items-center justify-center bg-slate-950">
             <img 
               src="/logo.PNG" 
               alt="RoadEcho Logo" 
-              className="absolute w-60 max-w-none scale-125 translate-x-2 translate-y-2 object-cover" 
+              className="absolute w-72 max-w-none scale-110 translate-y-1 object-cover" 
             />
           </div>
         </div>
