@@ -36,7 +36,7 @@ export default function Home() {
       setMessage(transcript);
 
       if (event.results[event.results.length - 1].isFinal) {
-        recognition.stop();
+        recognition.abort(); // Forces iOS Safari to instantly release the hardware mic
       }
     };
 
