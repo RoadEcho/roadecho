@@ -6,6 +6,7 @@ export default function Home() {
   const [plate, setPlate] = useState('');
   const [country, setCountry] = useState('USA');
   const [region, setRegion] = useState('');
+  const [senderEmail, setSenderEmail] = useState('');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,7 +20,7 @@ export default function Home() {
       const res = await fetch('/api/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plate, country, region, message }),
+        body: JSON.stringify({ plate, country, region, message, senderEmail }),
       });
 
       const data = await res.json();
@@ -27,6 +28,7 @@ export default function Home() {
         setStatus('Secure message sent successfully!');
         setPlate('');
         setRegion('');
+        setSenderEmail('');
         setMessage('');
       } else {
         setStatus(data.error || 'Failed to send message.');
@@ -99,6 +101,20 @@ export default function Home() {
                 className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Your Email (For Confirmation)
+            </label>
+            <input
+              type="email"
+              value={senderEmail}
+              onChange={(e) => setSenderEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
+            />
           </div>
 
           <div>
