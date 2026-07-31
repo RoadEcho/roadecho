@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getPlateHash } from '../../lib/hash';
+import { getPlateHash } from '../../../lib/hash';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -73,7 +73,6 @@ export async function POST(request: Request) {
     const adminEmail = process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com';
 
     if (user.email) {
-      // User confirmation email
       await resend.emails.send({
         from: 'RoadEcho <onboarding@resend.dev>',
         to: [user.email],
@@ -92,7 +91,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // Admin audit notification email
     await resend.emails.send({
       from: 'RoadEcho System <onboarding@resend.dev>',
       to: [adminEmail],
