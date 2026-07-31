@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useRouter } from 'next/navigation'
 
 interface AnalyticsData {
   totalMessages: number
@@ -21,11 +22,11 @@ interface AnalyticsData {
 }
 
 export default function AdminDashboard() {
+  const router = useRouter()
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily')
-  const [authorized, setAuthorized] = useState(false)
 
   useEffect(() => {
     checkAdminAndFetch()
@@ -36,20 +37,21 @@ export default function AdminDashboard() {
       setLoading(true)
       const { data: { session } } = await supabase.auth.getSession()
       
+      // 1. If no session exists at all, redirect to login
       if (!session || !session.user) {
-        window.location.href = '/login'
+        router.push('/login')
         return
       }
 
-      // Replace with your actual admin email address
+      // 2. If logged in with the wrong account, sign out and redirect to login
       const adminEmail = 'roadecho.admin@gmail.com' 
       if (session.user.email !== adminEmail) {
-        setError('Access Denied: Admin privileges required.')
-        setLoading(false)
+        await supabase.auth.signOut()
+        router.push('/login')
         return
       }
 
-      setAuthorized(true)
+      // 3. Fetch analytics using secure bearer token
       const res = await fetch('/api/analytics', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -65,8 +67,8 @@ export default function AdminDashboard() {
     }
   }
 
-  if (loading) return <div className="p-10 text-white text-center bg-slate-950 min-h-screen">Verifying admin access...</div>
-  if (error || !authorized) return <div className="p-10 text-red-400 text-center bg-slate-950 min-h-screen">Error: {error || 'Unauthorized'}</div>
+  if (loading) return <div className="p-10 text-white text-center bg-slate-950 min-h-screen">Verifying secure admin access...</div>
+  if (error) return <div className="p-10 text-red-400 text-center bg-slate-950 min-h-screen">Access Denied: {error}</div>
 
   return (
     <div className="max-w-4xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10">
