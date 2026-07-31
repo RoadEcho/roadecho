@@ -13,14 +13,19 @@ const supabase = createClient(
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const licensePlate = body.licensePlate || body.license_plate;
-    const country = body.country;
-    const stateRegion = body.stateRegion || body.state_region;
-    const email = body.email || body.sender_email;
-    const message = body.message;
+    
+    const licensePlate = body.licensePlate || body.license_plate || body.plate || body.licencePlate;
+    const country = body.country || 'USA';
+    const stateRegion = body.stateRegion || body.state_region || body.state;
+    const email = body.email || body.sender_email || body.userEmail;
+    const message = body.message || body.text;
+
+    if (!licensePlate) {
+      return NextResponse.json({ error: 'Database Error: license_plate is missing from form submission.' }, { status: 400 });
+    }
 
     // 1. OpenAI Moderation Check
-    const moderation = await openai.moderations.create({ input: message });
+    const moderation = await openai.moderations.create({ input: message || '' });
     if (moderation.results[0].flagged) {
       return NextResponse.json({ error: 'Message flagged by moderation.' }, { status: 400 });
     }
@@ -59,8 +64,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('API Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: `Internal Server Error: ${error.message || error}` }, { status: 500 });
   }
 }
