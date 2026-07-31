@@ -5,9 +5,28 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // Fetch raw records to compute breakdown client-side or via Postgres RPC
+    // 1. Verify Authentication Token from Header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Unauthorized: Missing session token.' }, { status: 401 })
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized: Invalid or expired session.' }, { status: 401 })
+    }
+
+    // 2. Verify Admin Privileges
+    const adminEmail = process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com'
+    if (user.email !== adminEmail) {
+      return NextResponse.json({ error: 'Forbidden: Admin access restricted.' }, { status: 403 })
+    }
+
+    // 3. Fetch raw records to compute breakdown client-side or via Postgres RPC
     const { data: messages, error: msgError } = await supabase.from('messages').select('created_at')
     const { data: unlocks, error: unlockError } = await supabase.from('unlocks').select('created_at, amount')
 
