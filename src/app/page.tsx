@@ -52,6 +52,23 @@ export default function Home() {
     recognition.start();
   };
 
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'RoadEcho',
+          text: 'Check out RoadEcho—secure, privacy-first plate-to-plate messaging!',
+          url: window.location.origin,
+        });
+      } catch (err) {
+        // User cancelled share
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.origin);
+      alert('RoadEcho link copied to clipboard!');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreedToTerms) {
@@ -106,9 +123,18 @@ export default function Home() {
           <p className="text-slate-400 text-xs">
             Privacy-first plate-to-plate messaging with cryptographic hashing and AI pre-moderation.
           </p>
-          <a href="/dashboard" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium whitespace-nowrap ml-2">
-            Plate Vault &rarr;
-          </a>
+          <div className="flex items-center space-x-3 ml-2">
+            <button
+              type="button"
+              onClick={handleShare}
+              className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium whitespace-nowrap cursor-pointer bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700"
+            >
+              📤 Share
+            </button>
+            <a href="/dashboard" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium whitespace-nowrap">
+              Plate Vault &rarr;
+            </a>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
