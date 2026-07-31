@@ -5,7 +5,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function POST(request: Request) {
   try {
-    const { type } = await request.json();
+    const { type, userId } = await request.json();
 
     const priceId =
       type === 'subscription'
@@ -25,6 +25,11 @@ export async function POST(request: Request) {
       mode: mode,
       success_url: `${request.headers.get('origin')}/dashboard?success=true`,
       cancel_url: `${request.headers.get('origin')}/dashboard?canceled=true`,
+      client_reference_id: userId,
+      metadata: {
+        userId: userId,
+        type: type,
+      },
     });
 
     return NextResponse.json({ url: session.url });
