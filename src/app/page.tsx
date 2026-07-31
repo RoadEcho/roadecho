@@ -45,7 +45,7 @@ export default function Home() {
       <div className="w-full max-w-md p-8 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md">
         
         {/* Full Logo Display with Watermark Cropped */}
-        <div className="flex justify-center mb-6">
+        <div className="flex justify-center mb-4">
           <div className="w-56 h-32 overflow-hidden relative rounded-2xl border border-slate-800 shadow-xl flex items-center justify-center bg-slate-950">
             <img 
               src="/logo.PNG" 
@@ -55,9 +55,14 @@ export default function Home() {
           </div>
         </div>
 
-        <p className="text-slate-400 text-center text-sm mb-6">
-          Privacy-first plate-to-plate messaging with cryptographic hashing and AI pre-moderation.
-        </p>
+        <div className="flex justify-between items-center mb-6">
+          <p className="text-slate-400 text-xs">
+            Privacy-first plate-to-plate messaging with cryptographic hashing and AI pre-moderation.
+          </p>
+          <a href="/dashboard" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium whitespace-nowrap ml-2">
+            Plate Vault &rarr;
+          </a>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
