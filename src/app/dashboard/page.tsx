@@ -154,13 +154,13 @@ export default function VaultDashboard() {
         <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={() => handleCheckout('pass')}
-            className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg transition text-cyan-300"
+            className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg transition text-cyan-300 cursor-pointer"
           >
             24-Hour Pass ($1.99)
           </button>
           <button
             onClick={() => handleCheckout('subscription')}
-            className="flex-1 sm:flex-none px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg transition text-slate-950"
+            className="flex-1 sm:flex-none px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg transition text-slate-950 cursor-pointer"
           >
             Subscribe ($2.99/mo)
           </button>
@@ -206,7 +206,9 @@ export default function VaultDashboard() {
           plates.map((p) => (
             <div key={p.id} className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl">
               <div>
-                <span className="font-mono font-bold text-lg tracking-wider text-cyan-400">{p.plate_number}</span>
+                <span className="font-mono font-bold text-sm tracking-wider text-cyan-400">
+                  Secured Vault ID: {p.plate_number.substring(0, 12)}...
+                </span>
                 <span className="ml-2 px-2 py-0.5 text-xs bg-slate-800 text-slate-300 rounded">{p.state}</span>
               </div>
               <button
@@ -226,12 +228,29 @@ export default function VaultDashboard() {
           <p className="text-slate-500 text-sm italic">No messages found for your plates.</p>
         ) : (
           messages.map((m) => (
-            <div key={m.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+            <div key={m.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
               <div className="flex justify-between text-xs text-slate-500 font-mono">
                 <span>Location: {m.state_region}, {m.country || 'USA'}</span>
                 <span>{new Date(m.created_at).toLocaleDateString()}</span>
               </div>
-              <p className="text-slate-200 text-sm">{m.message}</p>
+              <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-center space-y-2">
+                <p className="text-sm font-semibold text-cyan-400">🔒 Secure Message Waiting in Vault</p>
+                <p className="text-xs text-slate-400">Unlock this message payload or enable continuous alerts below.</p>
+                <div className="flex justify-center gap-2 pt-1">
+                  <button
+                    onClick={() => handleCheckout('pass')}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg text-cyan-300 transition cursor-pointer"
+                  >
+                    Unlock ($1.99)
+                  </button>
+                  <button
+                    onClick={() => handleCheckout('subscription')}
+                    className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg text-slate-950 transition cursor-pointer"
+                  >
+                    Subscribe ($2.99/mo)
+                  </button>
+                </div>
+              </div>
             </div>
           ))
         )}
