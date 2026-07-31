@@ -194,7 +194,7 @@ export default function Home() {
             />
           </div>
 
-          {/* Legal Click-Wrap Agreement */}
+          {/* Legal Click-Wrap Agreement with Clickable Links */}
           <div className="flex items-start space-x-2 text-xs text-slate-400 pt-1">
             <input
               type="checkbox"
@@ -205,7 +205,9 @@ export default function Home() {
               className="mt-0.5 accent-cyan-500 cursor-pointer"
             />
             <label htmlFor="terms" className="cursor-pointer leading-relaxed">
-              I agree that fees cover secure digital decryption and delivery services. I understand RoadEcho does not unmask anonymous senders and abides by Terms & Privacy Policy.
+              I agree that fees cover secure digital decryption and delivery services. I understand RoadEcho does not unmask anonymous senders and abides by{' '}
+              <a href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Terms</a> &amp;{' '}
+              <a href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Privacy Policy</a>.
             </label>
           </div>
 
