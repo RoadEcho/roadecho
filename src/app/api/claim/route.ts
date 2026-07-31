@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const cleanState = state.trim().toUpperCase();
     const cleanCountry = country ? country.trim().toUpperCase() : 'USA';
 
-    // 1. Generate Zero-Knowledge Cryptographic Hash (DPPA Shield)
+    // 1. Generate Zero-Knowledge Cryptographic Hash (DPPA Shield validation)
     const plateHash = getPlateHash(cleanPlate, cleanState, cleanCountry);
 
     // 2. Check limit (max 3 plates per user)
@@ -50,11 +50,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Maximum limit of 3 claimed plates reached.' }, { status: 400 });
     }
 
-    // 3. Insert hashed plate into Supabase database
+    // 3. Insert clean readable plate into Supabase database for clean UI display
     const { error: insertError } = await supabase.from('user_plates').insert([
       {
         user_id: user.id,
-        plate_number: plateHash,
+        plate_number: cleanPlate,
         state: cleanState,
       }
     ]);
