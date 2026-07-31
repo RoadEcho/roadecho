@@ -44,6 +44,13 @@ export async function GET(request: Request) {
 
       if (!msgError) {
         messages = msgData || [];
+
+        // 4. Record vault unlock events for admin command center tracking
+        if (messages.length > 0) {
+          for (const _ of messages) {
+            await supabase.from('unlocks').insert({ amount: 1 });
+          }
+        }
       }
     }
 
