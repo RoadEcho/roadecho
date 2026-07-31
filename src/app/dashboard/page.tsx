@@ -31,35 +31,30 @@ export default function VaultDashboard() {
 
   async function fetchUserData() {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
       window.location.href = '/login'
       return
     }
 
-    const { data: plateData, error: plateError } = await supabase
-      .from('user_plates')
-      .select('*')
-      .eq('user_id', user.id)
-
-    if (plateError) {
-      setError(plateError.message)
-    } else {
-      setPlates(plateData || [])
-      
-      if (plateData && plateData.length > 0) {
-        const plateNumbers = plateData.map(p => p.plate_number)
-        const { data: msgData, error: msgError } = await supabase
-          .from('messages')
-          .select('*')
-          .in('license_plate', plateNumbers)
-          .order('created_at', { ascending: false })
-
-        if (!msgError) {
-          setMessages(msgData || [])
+    try {
+      const res = await fetch('/api/vault', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
         }
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Failed to load vault data.')
+      } else {
+        setPlates(data.plates || [])
+        setMessages(data.messages || [])
       }
+    } catch (err: any) {
+      setError(err.message || 'Failed to load vault data.')
     }
+
     setLoading(false)
   }
 
@@ -67,8 +62,11 @@ export default function VaultDashboard() {
     e.preventDefault()
     setError(null)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      window.location.href = '/login'
+      return
+    }
 
     if (plates.length >= 3) {
       setError('You have reached the maximum limit of 3 claimed plates.')
@@ -78,35 +76,30 @@ export default function VaultDashboard() {
     const plateNum = plateInput.trim().toUpperCase()
     const plateState = stateInput.trim().toUpperCase()
 
-    const { error: insertError } = await supabase
-      .from('user_plates')
-      .insert([
-        {
-          user_id: user.id,
-          plate_number: plateNum,
-          state: plateState
-        }
-      ])
-
-    if (insertError) {
-      setError(insertError.message)
-    } else {
-      try {
-        await fetch('/api/claim-notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: user.email,
-            plateNumber: plateNum,
-            state: plateState
-          })
+    try {
+      const res = await fetch('/api/claim', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          plateNumber: plateNum,
+          state: plateState,
+          country: 'USA'
         })
-      } catch (err) {
-        console.error('Failed to trigger confirmation email notifications:', err)
-      }
+      })
 
-      setPlateInput('')
-      fetchUserData()
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Failed to claim plate.')
+      } else {
+        setPlateInput('')
+        fetchUserData()
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to claim plate.')
     }
   }
 
@@ -192,7 +185,7 @@ export default function VaultDashboard() {
           messages.map((m) => (
             <div key={m.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
               <div className="flex justify-between text-xs text-slate-500 font-mono">
-                <span>Plate: {m.license_plate} ({m.state_region})</span>
+                <span>Location: {m.state_region}, {m.country || 'USA'}</span>
                 <span>{new Date(m.created_at).toLocaleDateString()}</span>
               </div>
               <p className="text-slate-200 text-sm">{m.message}</p>
