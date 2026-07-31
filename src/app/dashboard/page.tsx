@@ -91,7 +91,6 @@ export default function VaultDashboard() {
     if (insertError) {
       setError(insertError.message)
     } else {
-      // Trigger confirmation & admin audit emails via Resend API route
       try {
         await fetch('/api/claim-notify', {
           method: 'POST',
@@ -134,28 +133,30 @@ export default function VaultDashboard() {
 
       {error && <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">{error}</div>}
 
-      <form onSubmit={handleClaimPlate} className="mb-8 flex gap-3">
-        <input
-          type="text"
-          placeholder="Plate Number"
-          value={plateInput}
-          onChange={(e) => setPlateInput(e.target.value)}
-          required
-          className="flex-1 px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white uppercase placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-        />
-        <input
-          type="text"
-          placeholder="State"
-          maxLength={2}
-          value={stateInput}
-          onChange={(e) => setStateInput(e.target.value)}
-          required
-          className="w-24 px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white uppercase text-center placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-        />
+      <form onSubmit={handleClaimPlate} className="mb-8 flex flex-col sm:flex-row gap-3">
+        <div className="flex gap-3 flex-1">
+          <input
+            type="text"
+            placeholder="Plate Number"
+            value={plateInput}
+            onChange={(e) => setPlateInput(e.target.value)}
+            required
+            className="flex-1 px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white uppercase placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+          />
+          <input
+            type="text"
+            placeholder="State"
+            maxLength={2}
+            value={stateInput}
+            onChange={(e) => setStateInput(e.target.value)}
+            required
+            className="w-20 sm:w-24 px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white uppercase text-center placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+          />
+        </div>
         <button
           type="submit"
           disabled={plates.length >= 3}
-          className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg transition disabled:opacity-50 cursor-pointer"
+          className="w-full sm:w-auto px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg transition disabled:opacity-50 cursor-pointer"
         >
           Claim ({plates.length}/3)
         </button>
@@ -174,7 +175,7 @@ export default function VaultDashboard() {
               </div>
               <button
                 onClick={() => handleReleasePlate(p.id)}
-                className="text-sm text-red-400 hover:text-red-300 transition"
+                className="text-sm text-red-400 hover:text-red-300 transition cursor-pointer"
               >
                 Release
               </button>
