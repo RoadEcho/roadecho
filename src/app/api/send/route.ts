@@ -7,7 +7,6 @@ import { getPlateHash } from '../../../lib/hash';
 const resend = new Resend(process.env.RESEND_API_KEY);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Use service role key if available to bypass RLS for server-side lookups
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -15,6 +14,12 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const { agreedToTerms } = body;
+    
+    // 1. Enforce strict server-side terms validation (Legal Hardening)
+    if (!agreedToTerms) {
+      return NextResponse.json({ error: 'You must agree to the terms and digital delivery policy before sending.' }, { status: 400 });
+    }
     
     // Automatically find license plate
     let licensePlate = body.licensePlate || body.license_plate || body.plate || body.licencePlate || body.license;
@@ -22,7 +27,7 @@ export async function POST(request: Request) {
       const keys = Object.keys(body);
       for (const key of keys) {
         const val = body[key];
-        if (typeof val === 'string' && val.trim().length > 0 && !['email', 'country', 'stateRegion', 'message', 'sender_email'].includes(key)) {
+        if (typeof val === 'string' && val.trim().length > 0 && !['email', 'country', 'stateRegion', 'message', 'sender_email', 'agreedToTerms'].includes(key)) {
           licensePlate = val;
           break;
         }
@@ -43,16 +48,16 @@ export async function POST(request: Request) {
     const cleanState = stateRegion.trim().toUpperCase();
     const cleanCountry = country.trim().toUpperCase();
 
-    // 1. OpenAI Moderation Check
+    // 2. OpenAI Moderation Check
     const moderation = await openai.moderations.create({ input: message });
     if (moderation.results[0].flagged) {
       return NextResponse.json({ error: 'Message flagged by moderation.' }, { status: 400 });
     }
 
-    // 2. Generate Zero-Knowledge Cryptographic Hash (DPPA Shield)
+    // 3. Generate Zero-Knowledge Cryptographic Hash (DPPA Shield)
     const plateHash = getPlateHash(cleanPlate, cleanState, cleanCountry);
 
-    // 3. Save Hashed Message to Supabase Database
+    // 4. Save Hashed Message to Supabase Database with Legal Audit Trail
     const { error: dbError } = await supabase.from('messages').insert([
       {
         license_plate: plateHash,
@@ -60,6 +65,7 @@ export async function POST(request: Request) {
         state_region: cleanState,
         sender_email: email,
         message: message,
+        terms_agreed: true, // Permanent legal compliance audit proof
       }
     ]);
 
@@ -68,7 +74,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Database Error: ${dbError.message}` }, { status: 500 });
     }
 
-    // 4. Find if the plate is claimed to notify the actual vehicle owner using cryptographic hash
+    // 5. Find if the plate is claimed to notify the actual vehicle owner using cryptographic hash
     let ownerEmail: string | null = null;
     const { data: plateOwnerData } = await supabase
       .from('user_plates')
@@ -84,7 +90,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 5. Send Emails via Resend with Styled Dark Theme and Logo
+    // 6. Send Emails via Resend with Styled Dark Theme and Logo
     const adminEmail = process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com';
     const dashboardUrl = 'https://roadecho.vercel.app/dashboard';
     const adminDashboardUrl = 'https://roadecho.vercel.app/admin';
