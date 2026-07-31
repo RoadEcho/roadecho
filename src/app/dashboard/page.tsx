@@ -13,6 +13,7 @@ interface Message {
   id: string
   license_plate: string
   state_region: string
+  country: string
   message: string
   created_at: string
 }
