@@ -8,7 +8,6 @@ const supabase = createClient(
 
 export async function GET(request: Request) {
   try {
-    // Fetch all users using Supabase service role admin privileges
     const { data: { users }, error } = await supabase.auth.admin.listUsers();
 
     if (error) {
@@ -22,8 +21,9 @@ export async function GET(request: Request) {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const activeUsers = users.filter(user => {
-      if (!user.last_sign_in_at) return false;
-      return new Date(user.last_sign_in_at) >= thirtyDaysAgo;
+      const lastSignIn = (user as any).last_sign_in_at || (user as any).lastSignInAt;
+      if (!lastSignIn) return false;
+      return new Date(lastSignIn) >= thirtyDaysAgo;
     }).length;
 
     return NextResponse.json({
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
         id: u.id,
         email: u.email,
         createdAt: u.created_at,
-        lastSignIn: u.last_sign_in_at,
+        lastSignIn: (u as any).last_sign_in_at || (u as any).lastSignInAt,
       }))
     });
   } catch (err: any) {
