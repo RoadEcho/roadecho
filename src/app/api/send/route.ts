@@ -1,63 +1,60 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
 import { Resend } from 'resend';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import OpenAI from 'openai';
+import { createClient } from '@supabase/supabase-js';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const { plate, country, region, message, senderEmail } = await req.json();
+    const { licensePlate, country, stateRegion, email, message } = await request.json();
 
-    if (!plate || !country || !region || !message) {
-      return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
-    }
-
-    // 1. OpenAI Pre-Moderation
-    const moderation = await openai.moderations.create({
-      input: message,
-    });
-
+    // 1. OpenAI Moderation Check
+    const moderation = await openai.moderations.create({ input: message });
     if (moderation.results[0].flagged) {
-      return NextResponse.json(
-        { error: 'Message blocked by AI safety guidelines.' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Message flagged by moderation.' }, { status: 400 });
     }
 
-    // 2. Send Admin Notification Email
-    const adminEmail = process.env.ADMIN_EMAIL || senderEmail; 
+    // 2. Save Message to Supabase Database
+    const { error: dbError } = await supabase.from('messages').insert([
+      {
+        license_plate: licensePlate,
+        country: country,
+        state_region: stateRegion,
+        sender_email: email,
+        message: message,
+      }
+    ]);
+
+    if (dbError) {
+      console.error('Supabase Error:', dbError);
+    }
+
+    // 3. Send Emails via Resend
+    const adminEmail = process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com';
+
     await resend.emails.send({
-      from: 'RoadEcho Security <onboarding@resend.dev>',
+      from: 'RoadEcho <onboarding@resend.dev>',
       to: [adminEmail],
-      subject: `[RoadEcho Alert] New Message for ${country}:${region} - ${plate}`,
-      html: `
-        <h2>New Message Queued</h2>
-        <p><strong>Plate:</strong> ${plate.toUpperCase()}</p>
-        <p><strong>Location:</strong> ${region.toUpperCase()}, ${country.toUpperCase()}</p>
-        <p><strong>Message:</strong> ${message}</p>
-      `,
+      subject: `[RoadEcho Alert] New Message for ${country}:${stateRegion} - ${licensePlate}`,
+      text: `New Message Queued\n\nPlate: ${licensePlate}\nLocation: ${stateRegion}, ${country}\nMessage: ${message}`
     });
 
-    // 3. Send Confirmation to Sender
-    if (senderEmail) {
-      await resend.emails.send({
-        from: 'RoadEcho <onboarding@resend.dev>',
-        to: [senderEmail],
-        subject: `Your secure message to ${country}:${region} ${plate} has been queued`,
-        html: `
-          <h2>Message Dispatched</h2>
-          <p>Your message to <strong>${plate.toUpperCase()}</strong> has been securely queued.</p>
-        `,
-      });
-    }
+    await resend.emails.send({
+      from: 'RoadEcho <onboarding@resend.dev>',
+      to: [email],
+      subject: `Your secure message to ${country}:${stateRegion} ${licensePlate} has been queued`,
+      text: `Message Dispatched\n\nYour message to ${licensePlate} has been securely queued.`
+    });
 
-    return NextResponse.json({ success: true, message: 'Secure message sent successfully!' });
-  } catch (error: any) {
-    console.error('API Send Error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error.' }, { status: 500 });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('API Error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
