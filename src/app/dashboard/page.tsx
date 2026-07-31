@@ -75,19 +75,37 @@ export default function VaultDashboard() {
       return
     }
 
+    const plateNum = plateInput.trim().toUpperCase()
+    const plateState = stateInput.trim().toUpperCase()
+
     const { error: insertError } = await supabase
       .from('user_plates')
       .insert([
         {
           user_id: user.id,
-          plate_number: plateInput.trim().toUpperCase(),
-          state: stateInput.trim().toUpperCase()
+          plate_number: plateNum,
+          state: plateState
         }
       ])
 
     if (insertError) {
       setError(insertError.message)
     } else {
+      // Trigger confirmation & admin audit emails via Resend API route
+      try {
+        await fetch('/api/claim-notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: user.email,
+            plateNumber: plateNum,
+            state: plateState
+          })
+        })
+      } catch (err) {
+        console.error('Failed to trigger confirmation email notifications:', err)
+      }
+
       setPlateInput('')
       fetchUserData()
     }
