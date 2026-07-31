@@ -33,6 +33,7 @@ export async function POST(request: Request) {
 
     if (dbError) {
       console.error('Supabase Error:', dbError);
+      return NextResponse.json({ error: `Database Error: ${dbError.message}` }, { status: 500 });
     }
 
     // 3. Send Emails via Resend
