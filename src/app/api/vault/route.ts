@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getPlateHash } from '../../../lib/hash';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -30,31 +29,45 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: plateError.message }, { status: 500 });
     }
 
+    // 2. Check if user has an active subscription or valid 24-hour pass
+    const { data: subData } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    const { data: passData } = await supabase
+      .from('passes')
+      .select('*')
+      .eq('user_id', user.id)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    const hasAccess = !!subData || !!passData;
+
     let messages: any[] = [];
     if (plates && plates.length > 0) {
-      // 2. Compute cryptographic hashes for the user's plates on the server
-      const plateHashes = plates.map(p => getPlateHash(p.plate_number, p.state, 'USA'));
+      // 3. Extract the pre-computed plate hashes directly (since user_plates stores the hash)
+      const plateHashes = plates.map(p => p.plate_number);
 
-      // 3. Fetch matching messages using the hashes
+      // 4. Fetch matching messages using the hashes
       const { data: msgData, error: msgError } = await supabase
         .from('messages')
         .select('*')
         .in('license_plate', plateHashes)
         .order('created_at', { ascending: false });
 
-      if (!msgError) {
-        messages = msgData || [];
-
-        // 4. Record vault unlock events for admin command center tracking
-        if (messages.length > 0) {
-          for (const _ of messages) {
-            await supabase.from('unlocks').insert({ amount: 1 });
-          }
-        }
+      if (!msgError && msgData) {
+        // 5. Mask message content if the user hasn't paid/subscribed yet
+        messages = msgData.map(m => ({
+          ...m,
+          message: hasAccess ? m.message : '🔒 [Locked Message]'
+        }));
       }
     }
 
-    return NextResponse.json({ plates, messages });
+    return NextResponse.json({ plates: plates || [], messages, hasAccess });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || error }, { status: 500 });
   }
