@@ -21,6 +21,7 @@ interface Message {
 export default function VaultDashboard() {
   const [plates, setPlates] = useState<Plate[]>([])
   const [messages, setMessages] = useState<Message[]>([])
+  const [hasAccess, setHasAccess] = useState(false)
   const [plateInput, setPlateInput] = useState('')
   const [stateInput, setStateInput] = useState('DE')
   const [loading, setLoading] = useState(true)
@@ -51,6 +52,7 @@ export default function VaultDashboard() {
       } else {
         setPlates(data.plates || [])
         setMessages(data.messages || [])
+        setHasAccess(data.hasAccess || false)
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load vault data.')
@@ -145,27 +147,29 @@ export default function VaultDashboard() {
       <h1 className="text-2xl font-bold mb-2">Your Plate Vault</h1>
       <p className="text-slate-400 text-sm mb-6">Claim up to 3 license plates to monitor messages.</p>
 
-      {/* Upgrade / Checkout Buttons */}
-      <div className="mb-8 p-4 bg-slate-950 border border-slate-800 rounded-xl flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-cyan-400">Unlock Full Access</h3>
-          <p className="text-xs text-slate-400">Get a 24-hour pass or subscribe for continuous alerts.</p>
+      {/* Upgrade / Checkout Buttons (Hidden if user already has access) */}
+      {!hasAccess && (
+        <div className="mb-8 p-4 bg-slate-950 border border-slate-800 rounded-xl flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-cyan-400">Unlock Full Access</h3>
+            <p className="text-xs text-slate-400">Get a 24-hour pass or subscribe for continuous alerts.</p>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => handleCheckout('pass')}
+              className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg transition text-cyan-300 cursor-pointer"
+            >
+              24-Hour Pass ($1.99)
+            </button>
+            <button
+              onClick={() => handleCheckout('subscription')}
+              className="flex-1 sm:flex-none px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg transition text-slate-950 cursor-pointer"
+            >
+              Subscribe ($2.99/mo)
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <button
-            onClick={() => handleCheckout('pass')}
-            className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg transition text-cyan-300 cursor-pointer"
-          >
-            24-Hour Pass ($1.99)
-          </button>
-          <button
-            onClick={() => handleCheckout('subscription')}
-            className="flex-1 sm:flex-none px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg transition text-slate-950 cursor-pointer"
-          >
-            Subscribe ($2.99/mo)
-          </button>
-        </div>
-      </div>
+      )}
 
       {error && <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">{error}</div>}
 
@@ -233,24 +237,32 @@ export default function VaultDashboard() {
                 <span>Location: {m.state_region}, {m.country || 'USA'}</span>
                 <span>{new Date(m.created_at).toLocaleDateString()}</span>
               </div>
-              <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-center space-y-2">
-                <p className="text-sm font-semibold text-cyan-400">🔒 Secure Message Waiting in Vault</p>
-                <p className="text-xs text-slate-400">Unlock this message payload or enable continuous alerts below.</p>
-                <div className="flex justify-center gap-2 pt-1">
-                  <button
-                    onClick={() => handleCheckout('pass')}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg text-cyan-300 transition cursor-pointer"
-                  >
-                    Unlock ($1.99)
-                  </button>
-                  <button
-                    onClick={() => handleCheckout('subscription')}
-                    className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg text-slate-950 transition cursor-pointer"
-                  >
-                    Subscribe ($2.99/mo)
-                  </button>
+
+              {hasAccess ? (
+                <div className="p-3 bg-slate-900 border border-cyan-500/50 rounded-lg space-y-1">
+                  <p className="text-xs text-cyan-400 font-semibold">🔓 Unlocked Message</p>
+                  <p className="text-slate-100 text-sm">{m.message}</p>
                 </div>
-              </div>
+              ) : (
+                <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-center space-y-2">
+                  <p className="text-sm font-semibold text-cyan-400">🔒 Secure Message Waiting in Vault</p>
+                  <p className="text-xs text-slate-400">Unlock this message payload or enable continuous alerts below.</p>
+                  <div className="flex justify-center gap-2 pt-1">
+                    <button
+                      onClick={() => handleCheckout('pass')}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg text-cyan-300 transition cursor-pointer"
+                    >
+                      Unlock ($1.99)
+                    </button>
+                    <button
+                      onClick={() => handleCheckout('subscription')}
+                      className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg text-slate-950 transition cursor-pointer"
+                    >
+                      Subscribe ($2.99/mo)
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))
         )}
