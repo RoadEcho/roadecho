@@ -40,16 +40,15 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-slate-950 text-white">
       <div className="w-full max-w-md p-8 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md">
         
-        {/* Logo Display */}
-        <div className="flex justify-center mb-6">
+        {/* Larger Logo Display */}
+        <div className="flex justify-center mb-4">
           <img 
             src="/logo.PNG" 
             alt="RoadEcho Logo" 
-            className="w-20 h-20 object-contain rounded-xl shadow-lg border border-slate-700 bg-slate-950 p-1" 
+            className="w-44 h-auto object-contain drop-shadow-xl" 
           />
         </div>
 
-        <h1 className="text-3xl font-extrabold text-center text-cyan-400 mb-2">RoadEcho</h1>
         <p className="text-slate-400 text-center text-sm mb-6">
           Privacy-first plate-to-plate messaging with cryptographic hashing and AI pre-moderation.
         </p>
