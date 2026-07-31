@@ -61,13 +61,16 @@ export default function VaultDashboard() {
     setLoading(false)
   }
 
-  // --- Stripe Checkout Handler ---
+  // --- Stripe Checkout Handler (Updated with userId) ---
   const handleCheckout = async (type: 'pass' | 'subscription') => {
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const userId = session?.user?.id
+
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type }),
+        body: JSON.stringify({ type, userId }),
       })
 
       const data = await res.json()
