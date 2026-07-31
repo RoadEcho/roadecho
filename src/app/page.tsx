@@ -4,7 +4,8 @@ import { useState } from 'react';
 
 export default function Home() {
   const [plate, setPlate] = useState('');
-  const [state, setState] = useState('');
+  const [country, setCountry] = useState('USA');
+  const [region, setRegion] = useState('');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,14 +19,14 @@ export default function Home() {
       const res = await fetch('/api/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plate, state, message }),
+        body: JSON.stringify({ plate, country, region, message }),
       });
 
       const data = await res.json();
       if (res.ok) {
         setStatus('Secure message sent successfully!');
         setPlate('');
-        setState('');
+        setRegion('');
         setMessage('');
       } else {
         setStatus(data.error || 'Failed to send message.');
@@ -71,18 +72,33 @@ export default function Home() {
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-              State / Province / Region
-            </label>
-            <input
-              type="text"
-              value={state}
-              onChange={(e) => setState(e.target.value.toUpperCase())}
-              placeholder="CA, ON, Tokyo, etc."
-              required
-              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                Country
+              </label>
+              <input
+                type="text"
+                value={country}
+                onChange={(e) => setCountry(e.target.value.toUpperCase())}
+                placeholder="USA, CA, UK..."
+                required
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                State / Region
+              </label>
+              <input
+                type="text"
+                value={region}
+                onChange={(e) => setRegion(e.target.value.toUpperCase())}
+                placeholder="CA, ON, Tokyo..."
+                required
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase"
+              />
+            </div>
           </div>
 
           <div>
