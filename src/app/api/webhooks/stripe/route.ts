@@ -46,6 +46,14 @@ export async function POST(request: Request) {
           expires_at: expiresAt,
         });
       }
+
+      // Record in 'unlocks' table so Admin Command Center updates its stats
+      await supabase.from('unlocks').insert({
+        user_id: userId,
+        type: passType || 'pass',
+        amount: session.amount_total ? session.amount_total / 100 : 1.99,
+        created_at: new Date().toISOString(),
+      });
     }
   }
 
