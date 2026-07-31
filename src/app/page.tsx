@@ -10,6 +10,39 @@ export default function Home() {
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
+  const handleVoiceInput = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in this browser.');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setMessage(transcript);
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,9 +156,20 @@ export default function Home() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-              Message
-            </label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Message
+              </label>
+              <button
+                type="button"
+                onClick={handleVoiceInput}
+                className={`text-xs px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer ${
+                  isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'
+                }`}
+              >
+                {isListening ? 'Listening...' : '🎤 Speak Message'}
+              </button>
+            </div>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
