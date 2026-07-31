@@ -8,6 +8,7 @@ export default function Home() {
   const [region, setRegion] = useState('');
   const [senderEmail, setSenderEmail] = useState('');
   const [message, setMessage] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -53,6 +54,11 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agreedToTerms) {
+      setStatus('You must agree to the terms before sending.');
+      return;
+    }
+
     setLoading(true);
     setStatus(null);
 
@@ -60,7 +66,7 @@ export default function Home() {
       const res = await fetch('/api/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plate, country, region, message, senderEmail }),
+        body: JSON.stringify({ plate, country, region, message, senderEmail, agreedToTerms }),
       });
 
       const data = await res.json();
@@ -70,6 +76,7 @@ export default function Home() {
         setRegion('');
         setSenderEmail('');
         setMessage('');
+        setAgreedToTerms(false);
       } else {
         setStatus(data.error || 'Failed to send message.');
       }
@@ -185,6 +192,21 @@ export default function Home() {
               required
               className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors resize-none"
             />
+          </div>
+
+          {/* Legal Click-Wrap Agreement */}
+          <div className="flex items-start space-x-2 text-xs text-slate-400 pt-1">
+            <input
+              type="checkbox"
+              id="terms"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              required
+              className="mt-0.5 accent-cyan-500 cursor-pointer"
+            />
+            <label htmlFor="terms" className="cursor-pointer leading-relaxed">
+              I agree that fees cover secure digital decryption and delivery services. I understand RoadEcho does not unmask anonymous senders and abides by Terms & Privacy Policy.
+            </label>
           </div>
 
           <button
