@@ -12,7 +12,12 @@ const supabase = createClient(
 
 export async function POST(request: Request) {
   try {
-    const { licensePlate, country, stateRegion, email, message } = await request.json();
+    const body = await request.json();
+    const licensePlate = body.licensePlate || body.license_plate;
+    const country = body.country;
+    const stateRegion = body.stateRegion || body.state_region;
+    const email = body.email || body.sender_email;
+    const message = body.message;
 
     // 1. OpenAI Moderation Check
     const moderation = await openai.moderations.create({ input: message });
