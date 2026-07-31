@@ -14,13 +14,13 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     
-    // Automatically find the license plate regardless of what key name the form uses
+    // Automatically find license plate
     let licensePlate = body.licensePlate || body.license_plate || body.plate || body.licencePlate || body.license;
     if (!licensePlate) {
       const keys = Object.keys(body);
       for (const key of keys) {
         const val = body[key];
-        if (typeof val === 'string' && val.trim().length > 0 && key !== 'email' && key !== 'country' && key !== 'stateRegion' && key !== 'message' && key !== 'sender_email') {
+        if (typeof val === 'string' && val.trim().length > 0 && !['email', 'country', 'stateRegion', 'message', 'sender_email'].includes(key)) {
           licensePlate = val;
           break;
         }
@@ -29,15 +29,17 @@ export async function POST(request: Request) {
 
     const country = body.country || 'USA';
     const stateRegion = body.stateRegion || body.state_region || body.state || 'DE';
-    const email = body.email || body.sender_email || body.userEmail;
-    const message = body.message || body.text;
+    
+    // Automatically find email
+    const email = body.email || body.sender_email || body.userEmail || body.mail || 'roadecho.admin@gmail.com';
+    const message = body.message || body.text || '';
 
     if (!licensePlate) {
-      return NextResponse.json({ error: 'Database Error: license_plate is missing from form submission.' }, { status: 400 });
+      return NextResponse.json({ error: 'Database Error: license_plate is missing.' }, { status: 400 });
     }
 
     // 1. OpenAI Moderation Check
-    const moderation = await openai.moderations.create({ input: message || '' });
+    const moderation = await openai.moderations.create({ input: message });
     if (moderation.results[0].flagged) {
       return NextResponse.json({ error: 'Message flagged by moderation.' }, { status: 400 });
     }
