@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 export default function Home() {
   const [plate, setPlate] = useState('');
-  const [state, setState] = useState('CA');
+  const [state, setState] = useState('');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -25,6 +25,7 @@ export default function Home() {
       if (res.ok) {
         setStatus('Secure message sent successfully!');
         setPlate('');
+        setState('');
         setMessage('');
       } else {
         setStatus(data.error || 'Failed to send message.');
@@ -72,25 +73,16 @@ export default function Home() {
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-              State
+              State / Province / Region
             </label>
-            <select
+            <input
+              type="text"
               value={state}
-              onChange={(e) => setState(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors"
-            >
-              <option value="CA">CA</option>
-              <option value="NY">NY</option>
-              <option value="TX">TX</option>
-              <option value="FL">FL</option>
-              <option value="WA">WA</option>
-              <option value="IL">IL</option>
-              <option value="PA">PA</option>
-              <option value="OH">OH</option>
-              <option value="GA">GA</option>
-              <option value="NC">NC</option>
-              <option value="OTHER">Other</option>
-            </select>
+              onChange={(e) => setState(e.target.value.toUpperCase())}
+              placeholder="CA, ON, Tokyo, etc."
+              required
+              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase"
+            />
           </div>
 
           <div>
