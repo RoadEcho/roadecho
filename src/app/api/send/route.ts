@@ -79,17 +79,31 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Send Emails via Resend with Dashboard Links
+    // 4. Send Emails via Resend with Styled Dark Theme and Logo
     const adminEmail = process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com';
     const dashboardUrl = 'https://roadecho.vercel.app/dashboard';
     const adminDashboardUrl = 'https://roadecho.vercel.app/admin';
+    const logoUrl = 'https://roadecho.vercel.app/logo.PNG';
 
     // Admin audit notification
     await resend.emails.send({
       from: 'RoadEcho <onboarding@resend.dev>',
       to: [adminEmail],
       subject: `[RoadEcho Alert] New Message for ${country}:${cleanState} - ${cleanPlate}`,
-      text: `New Message Queued\n\nPlate: ${cleanPlate}\nLocation: ${cleanState}, ${country}\nSender: ${email}\nMessage: ${message}\n\nView Admin Command Center: ${adminDashboardUrl}`
+      text: `New Message Queued\n\nPlate: ${cleanPlate}\nLocation: ${cleanState}, ${country}\nSender: ${email}\nMessage: ${message}\n\nView Admin Command Center: ${adminDashboardUrl}`,
+      html: `
+        <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="${logoUrl}" alt="RoadEcho Logo" style="height: 48px; object-fit: contain;" />
+          </div>
+          <h2 style="color: #06b6d4; margin-top: 0; font-size: 18px;">[Audit] New Message Queued</h2>
+          <p style="margin: 6px 0;"><strong>Plate:</strong> ${cleanPlate}</p>
+          <p style="margin: 6px 0;"><strong>Location:</strong> ${cleanState}, ${country}</p>
+          <p style="margin: 6px 0;"><strong>Sender:</strong> ${email}</p>
+          <p style="background: #1e293b; padding: 12px; border-radius: 8px; font-style: italic; margin: 16px 0;">"${message}"</p>
+          <a href="${adminDashboardUrl}" style="display: inline-block; background-color: #06b6d4; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 8px;">View Admin Command Center</a>
+        </div>
+      `
     });
 
     // Email to the claimed plate owner (if someone claimed it)
@@ -100,8 +114,11 @@ export async function POST(request: Request) {
         subject: `[RoadEcho] New message received for your plate ${cleanPlate} (${cleanState})`,
         text: `You have received a new secure message for your claimed plate ${cleanPlate} (${cleanState}). Log in to your RoadEcho vault dashboard to view and unlock it: ${dashboardUrl}`,
         html: `
-          <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px;">
-            <h2 style="color: #06b6d4; margin-top: 0;">New Message Received</h2>
+          <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <img src="${logoUrl}" alt="RoadEcho Logo" style="height: 48px; object-fit: contain;" />
+            </div>
+            <h2 style="color: #06b6d4; margin-top: 0; font-size: 18px;">New Message Received</h2>
             <p>You have received a new secure message for your claimed plate <strong>${cleanPlate} (${cleanState})</strong>.</p>
             <p>Log in to your RoadEcho vault dashboard to view and unlock it:</p>
             <a href="${dashboardUrl}" style="display: inline-block; background-color: #06b6d4; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 12px;">Open Plate Vault Dashboard</a>
@@ -115,7 +132,18 @@ export async function POST(request: Request) {
       from: 'RoadEcho <onboarding@resend.dev>',
       to: [email],
       subject: `Your secure message to ${country}:${cleanState} ${cleanPlate} has been queued`,
-      text: `Message Dispatched\n\nYour message to ${cleanPlate} has been securely queued. Manage your own plates or view your vault dashboard: ${dashboardUrl}`
+      text: `Message Dispatched\n\nYour message to ${cleanPlate} has been securely queued. Manage your own plates or view your vault dashboard: ${dashboardUrl}`,
+      html: `
+        <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="${logoUrl}" alt="RoadEcho Logo" style="height: 48px; object-fit: contain;" />
+          </div>
+          <h2 style="color: #06b6d4; margin-top: 0; font-size: 18px;">Message Dispatched</h2>
+          <p>Your secure message to <strong>${cleanPlate} (${cleanState})</strong> has been successfully queued.</p>
+          <p>Want to claim your own plates or monitor incoming messages?</p>
+          <a href="${dashboardUrl}" style="display: inline-block; background-color: #06b6d4; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 12px;">Open Plate Vault Dashboard</a>
+        </div>
+      `
     });
 
     return NextResponse.json({ success: true });
