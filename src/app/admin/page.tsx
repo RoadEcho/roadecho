@@ -34,23 +34,27 @@ export default function AdminDashboard() {
   async function checkAdminAndFetch() {
     try {
       setLoading(true)
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
       
-      if (!user) {
+      if (!session || !session.user) {
         window.location.href = '/login'
         return
       }
 
       // Replace with your actual admin email address
       const adminEmail = 'roadecho.admin@gmail.com' 
-      if (user.email !== adminEmail) {
+      if (session.user.email !== adminEmail) {
         setError('Access Denied: Admin privileges required.')
         setLoading(false)
         return
       }
 
       setAuthorized(true)
-      const res = await fetch('/api/analytics')
+      const res = await fetch('/api/analytics', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to load analytics')
       setData(json)
