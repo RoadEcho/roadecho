@@ -1,3 +1,5 @@
+import './globals.css';
+
 export const metadata = {
   title: 'RoadEcho',
   description: 'Privacy-first plate-to-plate messaging',
