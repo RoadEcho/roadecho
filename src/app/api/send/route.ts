@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
-import { getPlateHash } from '@/lib/hash';
+import { getPlateHash } from '../../../lib/hash';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
