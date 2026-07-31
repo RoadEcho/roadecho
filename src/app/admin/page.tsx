@@ -90,12 +90,12 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-6 border-b border-slate-800 pb-4">
+      <div className="grid grid-cols-2 sm:flex gap-2 mb-6 border-b border-slate-800 pb-4">
         {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition cursor-pointer ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition cursor-pointer text-center ${
               activeTab === tab ? 'bg-cyan-500 text-slate-950' : 'bg-slate-950 text-slate-400 hover:text-white'
             }`}
           >
