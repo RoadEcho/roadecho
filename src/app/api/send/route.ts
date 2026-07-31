@@ -27,37 +27,49 @@ export async function POST(request: Request) {
       const keys = Object.keys(body);
       for (const key of keys) {
         const val = body[key];
-        if (typeof val === 'string' && val.trim().length > 0 && !['email', 'country', 'stateRegion', 'message', 'sender_email', 'agreedToTerms'].includes(key)) {
+        if (typeof val === 'string' && val.trim().length > 0 && !['email', 'country', 'stateRegion', 'state', 'state_region', 'message', 'text', 'sender_email', 'agreedToTerms'].includes(key)) {
           licensePlate = val;
           break;
         }
       }
     }
 
-    const country = body.country || 'USA';
-    const stateRegion = body.stateRegion || body.state_region || body.state || 'DE';
-    
-    const email = body.email || body.sender_email || body.userEmail || body.mail || 'roadecho.admin@gmail.com';
-    const message = body.message || body.text || '';
+    const country = body.country || body.nation || 'USA';
+    const stateRegion = body.stateRegion || body.state_region || body.state;
+    const email = body.email || body.sender_email || body.userEmail || body.mail;
+    const message = body.message || body.text;
 
+    // 2. Strict input validation (removed silent fallbacks to prevent mislabeling)
     if (!licensePlate) {
       return NextResponse.json({ error: 'Database Error: license_plate is missing.' }, { status: 400 });
+    }
+
+    if (!stateRegion) {
+      return NextResponse.json({ error: 'State / region is required.' }, { status: 400 });
+    }
+
+    if (!email) {
+      return NextResponse.json({ error: 'Sender email is required.' }, { status: 400 });
+    }
+
+    if (!message || message.trim().length === 0) {
+      return NextResponse.json({ error: 'Message content cannot be empty.' }, { status: 400 });
     }
 
     const cleanPlate = licensePlate.trim().toUpperCase();
     const cleanState = stateRegion.trim().toUpperCase();
     const cleanCountry = country.trim().toUpperCase();
 
-    // 2. OpenAI Moderation Check
+    // 3. OpenAI Moderation Check
     const moderation = await openai.moderations.create({ input: message });
     if (moderation.results[0].flagged) {
       return NextResponse.json({ error: 'Message flagged by moderation.' }, { status: 400 });
     }
 
-    // 3. Generate Zero-Knowledge Cryptographic Hash (DPPA Shield)
+    // 4. Generate Zero-Knowledge Cryptographic Hash (DPPA Shield)
     const plateHash = getPlateHash(cleanPlate, cleanState, cleanCountry);
 
-    // 4. Save Hashed Message to Supabase Database with Legal Audit Trail
+    // 5. Save Hashed Message to Supabase Database with Legal Audit Trail
     const { error: dbError } = await supabase.from('messages').insert([
       {
         license_plate: plateHash,
@@ -65,7 +77,7 @@ export async function POST(request: Request) {
         state_region: cleanState,
         sender_email: email,
         message: message,
-        terms_agreed: true, // Permanent legal compliance audit proof
+        terms_agreed: true,
       }
     ]);
 
@@ -74,7 +86,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Database Error: ${dbError.message}` }, { status: 500 });
     }
 
-    // 5. Find if the plate is claimed to notify the actual vehicle owner using cryptographic hash
+    // 6. Find if the plate is claimed to notify the actual vehicle owner using cryptographic hash
     let ownerEmail: string | null = null;
     const { data: plateOwnerData } = await supabase
       .from('user_plates')
@@ -90,7 +102,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 6. Send Emails via Resend with Styled Dark Theme and Logo
+    // 7. Send Emails via Resend with Styled Dark Theme and Logo
     const adminEmail = process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com';
     const dashboardUrl = 'https://roadecho.vercel.app/dashboard';
     const adminDashboardUrl = 'https://roadecho.vercel.app/admin';
