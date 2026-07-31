@@ -40,13 +40,15 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-slate-950 text-white">
       <div className="w-full max-w-md p-8 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md">
         
-        {/* Larger Logo Display */}
-        <div className="flex justify-center mb-4">
-          <img 
-            src="/logo.PNG" 
-            alt="RoadEcho Logo" 
-            className="w-44 h-auto object-contain drop-shadow-xl" 
-          />
+        {/* Logo Display with Watermark Cropped Out */}
+        <div className="flex justify-center mb-6">
+          <div className="w-48 h-20 overflow-hidden relative rounded-2xl border border-slate-800 shadow-xl flex items-center justify-center bg-slate-950">
+            <img 
+              src="/logo.PNG" 
+              alt="RoadEcho Logo" 
+              className="absolute w-60 max-w-none scale-125 translate-x-2 translate-y-2 object-cover" 
+            />
+          </div>
         </div>
 
         <p className="text-slate-400 text-center text-sm mb-6">
