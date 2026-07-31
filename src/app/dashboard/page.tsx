@@ -59,6 +59,26 @@ export default function VaultDashboard() {
     setLoading(false)
   }
 
+  // --- Stripe Checkout Handler ---
+  const handleCheckout = async (type: 'pass' | 'subscription') => {
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type }),
+      })
+
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setError(data.error || 'Failed to initiate checkout.')
+      }
+    } catch (err: any) {
+      setError('An error occurred during checkout.')
+    }
+  }
+
   async function handleClaimPlate(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -124,6 +144,28 @@ export default function VaultDashboard() {
     <div className="max-w-2xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10">
       <h1 className="text-2xl font-bold mb-2">Your Plate Vault</h1>
       <p className="text-slate-400 text-sm mb-6">Claim up to 3 license plates to monitor messages.</p>
+
+      {/* Upgrade / Checkout Buttons */}
+      <div className="mb-8 p-4 bg-slate-950 border border-slate-800 rounded-xl flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-cyan-400">Unlock Full Access</h3>
+          <p className="text-xs text-slate-400">Get a 24-hour pass or subscribe for continuous alerts.</p>
+        </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => handleCheckout('pass')}
+            className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg transition text-cyan-300"
+          >
+            24-Hour Pass ($1.99)
+          </button>
+          <button
+            onClick={() => handleCheckout('subscription')}
+            className="flex-1 sm:flex-none px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg transition text-slate-950"
+          >
+            Subscribe ($2.99/mo)
+          </button>
+        </div>
+      </div>
 
       {error && <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">{error}</div>}
 
