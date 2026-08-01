@@ -277,6 +277,15 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Footer Navigation Link Outside Main Card */}
+      <footer className="mt-6 text-center text-xs text-slate-500 space-x-4">
+        <a href="/faq" className="hover:text-cyan-400 transition-colors">FAQ</a>
+        <span>•</span>
+        <a href="/terms" className="hover:text-cyan-400 transition-colors">Terms</a>
+        <span>•</span>
+        <a href="/privacy" className="hover:text-cyan-400 transition-colors">Privacy</a>
+      </footer>
     </main>
   );
 }
