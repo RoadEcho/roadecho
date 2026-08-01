@@ -21,9 +21,21 @@ interface AnalyticsData {
   }
 }
 
+interface UserStats {
+  totalUsers: number
+  activeUsers: number
+  users: Array<{
+    id: string
+    email: string
+    createdAt: string
+    lastSignIn: string | null
+  }>
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const [data, setData] = useState<AnalyticsData | null>(null)
+  const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily')
@@ -60,6 +72,17 @@ export default function AdminDashboard() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to load analytics')
       setData(json)
+
+      // 4. Fetch user stats and directory
+      const userRes = await fetch('/api/admin/users', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+      const userJson = await userRes.json()
+      if (userRes.ok) {
+        setUserStats(userJson)
+      }
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -71,7 +94,7 @@ export default function AdminDashboard() {
   if (error) return <div className="p-10 text-red-400 text-center bg-slate-950 min-h-screen">Access Denied: {error}</div>
 
   return (
-    <div className="max-w-4xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10">
+    <div className="max-w-4xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10 mb-10">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">RoadEcho Admin Command Center</h1>
         <button onClick={checkAdminAndFetch} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition cursor-pointer">
@@ -79,17 +102,27 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-8">
+      {/* Overview Metrics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-          <p className="text-slate-400 text-sm">Total Messages Sent</p>
+          <p className="text-slate-400 text-xs uppercase tracking-wider">Total Messages</p>
           <p className="text-3xl font-bold text-cyan-400 mt-1">{data?.totalMessages || 0}</p>
         </div>
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-          <p className="text-slate-400 text-sm">Total Vault Unlocks</p>
+          <p className="text-slate-400 text-xs uppercase tracking-wider">Total Unlocks</p>
           <p className="text-3xl font-bold text-emerald-400 mt-1">{data?.totalUnlocks || 0}</p>
+        </div>
+        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-xs uppercase tracking-wider">Total Accounts</p>
+          <p className="text-3xl font-bold text-purple-400 mt-1">{userStats?.totalUsers || 0}</p>
+        </div>
+        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-xs uppercase tracking-wider">Active (30 Days)</p>
+          <p className="text-3xl font-bold text-amber-400 mt-1">{userStats?.activeUsers || 0}</p>
         </div>
       </div>
 
+      {/* Message & Unlock Breakdowns */}
       <div className="grid grid-cols-2 sm:flex gap-2 mb-6 border-b border-slate-800 pb-4">
         {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(tab => (
           <button
@@ -104,7 +137,7 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <h2 className="text-lg font-semibold mb-4 text-slate-300 capitalize">Messages ({activeTab})</h2>
           <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
@@ -135,6 +168,28 @@ export default function AdminDashboard() {
               <p className="text-slate-500 text-sm italic">No data recorded for this period.</p>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* User Directory Section */}
+      <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
+        <h2 className="text-lg font-semibold mb-4 text-slate-300">Registered User Directory</h2>
+        <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+          {userStats?.users && userStats.users.length > 0 ? (
+            userStats.users.map(u => (
+              <div key={u.id} className="flex justify-between items-center p-3 bg-slate-900 border border-slate-800 rounded-lg text-sm">
+                <div>
+                  <p className="font-medium text-white">{u.email}</p>
+                  <p className="text-xs text-slate-500">Joined: {new Date(u.createdAt).toLocaleDateString()}</p>
+                </div>
+                <div className="text-right text-xs text-slate-400 font-mono">
+                  Last Active: {u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString() : 'Never'}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-slate-500 text-sm italic">No registered users found.</p>
+          )}
         </div>
       </div>
     </div>
