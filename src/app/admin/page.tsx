@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 
 interface AnalyticsData {
   totalMessages: number
+  uniquePlatesCount: number
   totalUnlocks: number
   messagesBreakdown: {
     daily: Record<string, number>
@@ -185,10 +186,14 @@ export default function AdminDashboard() {
       {success && <div className="mb-4 p-3 bg-emerald-950/50 border border-emerald-800 rounded-lg text-emerald-300 text-sm">{success}</div>}
 
       {/* Overview Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-8">
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-xs uppercase tracking-wider">Total Messages</p>
           <p className="text-3xl font-bold text-cyan-400 mt-1">{data?.totalMessages || 0}</p>
+        </div>
+        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-xs uppercase tracking-wider">Plates Messaged</p>
+          <p className="text-3xl font-bold text-blue-400 mt-1">{data?.uniquePlatesCount || 0}</p>
         </div>
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-xs uppercase tracking-wider">Total Unlocks</p>
