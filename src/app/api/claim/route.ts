@@ -50,12 +50,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Maximum limit of 3 claimed plates reached.' }, { status: 400 });
     }
 
-    // 3. Insert secure SHA-256 Hash into Supabase (Zero-Knowledge Architecture: No raw plates stored)
+    // 3. Insert secure SHA-256 Hash and Display Plate into Supabase
     const { error: insertError } = await supabase.from('user_plates').insert([
       {
         user_id: user.id,
         plate_number: plateHash, // STORE HASH, NEVER RAW PLATE
         state: cleanState,
+        display_plate: cleanPlate, // Saved so user can see their plate
       }
     ]);
 
