@@ -79,11 +79,36 @@ export default function Home() {
     setLoading(true);
     setStatus(null);
 
+    // Capture user location coordinates if permitted by the browser
+    let latitude = null;
+    let longitude = null;
+
+    if (navigator.geolocation) {
+      try {
+        const position: GeolocationPosition = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+        });
+        latitude = position.coords.latitude;
+        longitude = position.coords.longitude;
+      } catch (err) {
+        console.log('Location access declined or unavailable, proceeding without coordinates.');
+      }
+    }
+
     try {
       const res = await fetch('/api/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plate, country, region, message, senderEmail, agreedToTerms }),
+        body: JSON.stringify({ 
+          plate, 
+          country, 
+          region, 
+          message, 
+          senderEmail, 
+          agreedToTerms,
+          latitude,
+          longitude 
+        }),
       });
 
       const data = await res.json();
