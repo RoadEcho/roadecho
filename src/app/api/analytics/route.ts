@@ -31,13 +31,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access restricted.' }, { status: 403 })
     }
 
-    // 3. Fetch raw records to compute breakdown
-    const { data: messages, error: msgError } = await supabase.from('messages').select('created_at')
+    // 3. Fetch raw records including license_plate for unique plate counting
+    const { data: messages, error: msgError } = await supabase.from('messages').select('license_plate, created_at')
     const { data: unlocks, error: unlockError } = await supabase.from('user_access').select('created_at')
 
     if (msgError || unlockError) {
       throw new Error(msgError?.message || unlockError?.message)
     }
+
+    // Calculate unique plates with messages
+    const uniquePlatesCount = new Set(messages?.map(m => m.license_plate).filter(Boolean)).size
 
     // Helper to group by timeframe
     const groupStats = (items: { created_at: string }[]) => {
@@ -71,6 +74,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       totalMessages: messages?.length || 0,
+      uniquePlatesCount,
       totalUnlocks: unlocks?.length || 0,
       messagesBreakdown: groupStats(messages || []),
       unlocksBreakdown: groupStats(unlocks || [])
