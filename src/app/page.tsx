@@ -41,15 +41,26 @@ export default function Home() {
       }
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
       setIsListening(false);
+      if (event.error === 'not-allowed') {
+        alert('Microphone permission denied. Please allow microphone access in your browser or device settings.');
+      } else {
+        alert(`Speech error: ${event.error || 'Unknown error'}`);
+      }
     };
 
     recognition.onend = () => {
       setIsListening(false);
     };
 
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (err: any) {
+      setIsListening(false);
+      alert('Could not start microphone. Please try again.');
+    }
   };
 
   const handleShare = async () => {
