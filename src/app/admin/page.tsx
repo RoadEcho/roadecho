@@ -32,12 +32,21 @@ interface UserStats {
   }>
 }
 
+interface AdminUser {
+  id: string
+  email: string
+  created_at: string
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [userStats, setUserStats] = useState<UserStats | null>(null)
+  const [admins, setAdmins] = useState<AdminUser[]>([])
+  const [newEmail, setNewEmail] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily')
 
   useEffect(() => {
@@ -47,17 +56,23 @@ export default function AdminDashboard() {
   async function checkAdminAndFetch() {
     try {
       setLoading(true)
+      setError(null)
       const { data: { session } } = await supabase.auth.getSession()
       
       // 1. If no session exists at all, redirect to login
-      if (!session || !session.user) {
+      if (!session || !session.user || !session.user.email) {
         router.push('/login')
         return
       }
 
-      // 2. If logged in with the wrong account, sign out and redirect to login
-      const adminEmail = 'roadecho.admin@gmail.com' 
-      if (session.user.email !== adminEmail) {
+      // 2. Check dynamically against the admin_users table
+      const { data: adminRecord, error: adminErr } = await supabase
+        .from('admin_users')
+        .select('email')
+        .eq('email', session.user.email)
+        .single()
+
+      if (adminErr || !adminRecord) {
         await supabase.auth.signOut()
         router.push('/login')
         return
@@ -81,7 +96,19 @@ export default function AdminDashboard() {
       })
       const userJson = await userRes.json()
       if (userRes.ok) {
-        setUserStats(userJson)
+        setUserStats(userJson.userStats || userJson)
+        if (userJson.admins) {
+          setAdmins(userJson.admins)
+        }
+      }
+
+      // 5. Fetch separate admin team list if endpoint exists
+      const adminRes = await fetch('/api/admin/users-list', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      })
+      if (adminRes.ok) {
+        const adminData = await adminRes.json()
+        setAdmins(adminData.admins || [])
       }
     } catch (err: any) {
       setError(err.message)
@@ -90,17 +117,72 @@ export default function AdminDashboard() {
     }
   }
 
+  async function handleAddAdmin(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setSuccess(null)
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ email: newEmail })
+      })
+
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to add admin')
+
+      setSuccess(`Successfully added ${newEmail}`)
+      setNewEmail('')
+      checkAdminAndFetch()
+    } catch (err: any) {
+      setError(err.message)
+    }
+  }
+
+  async function handleRemoveAdmin(id: string) {
+    setError(null)
+    setSuccess(null)
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      })
+
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to remove admin')
+
+      setSuccess('Admin removed successfully.')
+      checkAdminAndFetch()
+    } catch (err: any) {
+      setError(err.message)
+    }
+  }
+
   if (loading) return <div className="p-10 text-white text-center bg-slate-950 min-h-screen">Verifying secure admin access...</div>
-  if (error) return <div className="p-10 text-red-400 text-center bg-slate-950 min-h-screen">Access Denied: {error}</div>
+  if (error && !data) return <div className="p-10 text-red-400 text-center bg-slate-950 min-h-screen">Access Denied: {error}</div>
 
   return (
     <div className="max-w-4xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10 mb-10">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">RoadEcho Admin Command Center</h1>
+        <h1 className="text-2xl font-bold text-cyan-400">🔒 RoadEcho Admin Command Center</h1>
         <button onClick={checkAdminAndFetch} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition cursor-pointer">
           Refresh Data
         </button>
       </div>
+
+      {error && <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">{error}</div>}
+      {success && <div className="mb-4 p-3 bg-emerald-950/50 border border-emerald-800 rounded-lg text-emerald-300 text-sm">{success}</div>}
 
       {/* Overview Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
@@ -168,6 +250,46 @@ export default function AdminDashboard() {
               <p className="text-slate-500 text-sm italic">No data recorded for this period.</p>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Admin Team Management Section */}
+      <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl mb-8 space-y-4">
+        <h2 className="text-lg font-semibold text-slate-300">Manage Administrator Team</h2>
+        
+        <form onSubmit={handleAddAdmin} className="flex gap-2">
+          <input
+            type="email"
+            placeholder="new.admin@gmail.com"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            required
+            className="flex-1 px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition cursor-pointer"
+          >
+            Add Admin
+          </button>
+        </form>
+
+        <div className="space-y-2 pt-2 max-h-40 overflow-y-auto">
+          {admins.length > 0 ? (
+            admins.map((adm) => (
+              <div key={adm.id} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs">
+                <span className="font-mono text-cyan-300">{adm.email}</span>
+                <button
+                  onClick={() => handleRemoveAdmin(adm.id)}
+                  className="text-red-400 hover:text-red-300 transition cursor-pointer"
+                >
+                  Remove
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="text-slate-500 text-sm italic">No additional admins listed.</p>
+          )}
         </div>
       </div>
 
