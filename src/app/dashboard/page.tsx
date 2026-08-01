@@ -38,6 +38,16 @@ export default function VaultDashboard() {
 
   useEffect(() => {
     fetchUserData()
+
+    // Check if user just returned from a successful Stripe checkout
+    const queryParams = new URLSearchParams(window.location.search)
+    if (queryParams.get('success') === 'true') {
+      // Webhook might take 2-3 seconds to land; poll/retry once after 2.5 seconds
+      const timer = setTimeout(() => {
+        fetchUserData()
+      }, 2500)
+      return () => clearTimeout(timer)
+    }
   }, [])
 
   async function fetchUserData() {
