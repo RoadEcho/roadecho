@@ -16,19 +16,24 @@ export async function GET(request: Request) {
     const token = authHeader.replace('Bearer ', '')
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
 
-    if (authError || !user) {
+    if (authError || !user || !user.email) {
       return NextResponse.json({ error: 'Unauthorized: Invalid or expired session.' }, { status: 401 })
     }
 
-    // 2. Verify Admin Privileges
-    const adminEmail = process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com'
-    if (user.email !== adminEmail) {
+    // 2. Verify Admin Privileges Dynamically against admin_users table
+    const { data: adminRecord, error: adminError } = await supabase
+      .from('admin_users')
+      .select('email')
+      .eq('email', user.email)
+      .single()
+
+    if (adminError || !adminRecord) {
       return NextResponse.json({ error: 'Forbidden: Admin access restricted.' }, { status: 403 })
     }
 
-    // 3. Fetch raw records to compute breakdown client-side or via Postgres RPC
+    // 3. Fetch raw records to compute breakdown
     const { data: messages, error: msgError } = await supabase.from('messages').select('created_at')
-    const { data: unlocks, error: unlockError } = await supabase.from('unlocks').select('created_at, amount')
+    const { data: unlocks, error: unlockError } = await supabase.from('user_access').select('created_at')
 
     if (msgError || unlockError) {
       throw new Error(msgError?.message || unlockError?.message)
@@ -45,6 +50,8 @@ export async function GET(request: Request) {
 
       items.forEach(item => {
         const date = new Date(item.created_at)
+        if (isNaN(date.getTime())) return
+
         const day = date.toISOString().split('T')[0]
         const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
         const year = String(date.getFullYear())
@@ -63,10 +70,10 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      totalMessages: messages.length,
-      totalUnlocks: unlocks.length,
-      messagesBreakdown: groupStats(messages),
-      unlocksBreakdown: groupStats(unlocks)
+      totalMessages: messages?.length || 0,
+      totalUnlocks: unlocks?.length || 0,
+      messagesBreakdown: groupStats(messages || []),
+      unlocksBreakdown: groupStats(unlocks || [])
     })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
