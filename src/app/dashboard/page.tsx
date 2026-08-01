@@ -34,16 +34,15 @@ export default function VaultDashboard() {
   const [hasAccess, setHasAccess] = useState(false)
   const [plateInput, setPlateInput] = useState('')
   const [stateInput, setStateInput] = useState('DE')
+  const [agreedToCheckoutTerms, setAgreedToCheckoutTerms] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchUserData()
 
-    // Check if user just returned from a successful Stripe checkout
     const queryParams = new URLSearchParams(window.location.search)
     if (queryParams.get('success') === 'true') {
-      // Webhook might take 2-3 seconds to land; poll/retry once after 2.5 seconds
       const timer = setTimeout(() => {
         fetchUserData()
       }, 2500)
@@ -60,7 +59,6 @@ export default function VaultDashboard() {
     }
 
     try {
-      // 1. Fetch Vault data (plates, received messages, access status)
       const res = await fetch('/api/vault', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -76,7 +74,6 @@ export default function VaultDashboard() {
         setHasAccess(data.hasAccess || false)
       }
 
-      // 2. Fetch user's own sent message history
       const subRes = await fetch('/api/user/submissions', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -93,8 +90,12 @@ export default function VaultDashboard() {
     setLoading(false)
   }
 
-  // --- Stripe Checkout Handler ---
   const handleCheckout = async (type: 'pass' | 'subscription') => {
+    if (!agreedToCheckoutTerms) {
+      setError('You must agree to the terms before purchasing.')
+      return
+    }
+
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const userId = session?.user?.id
@@ -190,26 +191,46 @@ export default function VaultDashboard() {
       <h1 className="text-2xl font-bold mb-2">Your Plate Vault & History</h1>
       <p className="text-slate-400 text-sm mb-6">Claim up to 3 license plates and view your complete activity history.</p>
 
-      {/* Upgrade / Checkout Buttons */}
+      {/* Upgrade / Checkout Section with Click-Wrap Consent */}
       {!hasAccess && (
-        <div className="mb-8 p-4 bg-slate-950 border border-slate-800 rounded-xl flex flex-col sm:flex-row gap-4 items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-cyan-400">Unlock Full Access</h3>
-            <p className="text-xs text-slate-400">Get a 24-hour pass or subscribe for continuous alerts.</p>
+        <div className="mb-8 p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-cyan-400">Unlock Full Access</h3>
+              <p className="text-xs text-slate-400">Get a 24-hour pass or subscribe for continuous alerts.</p>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => handleCheckout('pass')}
+                disabled={!agreedToCheckoutTerms}
+                className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg transition text-cyan-300 cursor-pointer disabled:opacity-40"
+              >
+                24-Hour Pass ($1.99)
+              </button>
+              <button
+                onClick={() => handleCheckout('subscription')}
+                disabled={!agreedToCheckoutTerms}
+                className="flex-1 sm:flex-none px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg transition text-slate-950 cursor-pointer disabled:opacity-40"
+              >
+                Subscribe ($2.99/mo)
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => handleCheckout('pass')}
-              className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg transition text-cyan-300 cursor-pointer"
-            >
-              24-Hour Pass ($1.99)
-            </button>
-            <button
-              onClick={() => handleCheckout('subscription')}
-              className="flex-1 sm:flex-none px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg transition text-slate-950 cursor-pointer"
-            >
-              Subscribe ($2.99/mo)
-            </button>
+
+          {/* Checkout Click-Wrap Checkbox */}
+          <div className="flex items-start space-x-2 text-xs text-slate-400 pt-2 border-t border-slate-900">
+            <input
+              type="checkbox"
+              id="checkout-terms"
+              checked={agreedToCheckoutTerms}
+              onChange={(e) => setAgreedToCheckoutTerms(e.target.checked)}
+              className="mt-0.5 accent-cyan-500 cursor-pointer"
+            />
+            <label htmlFor="checkout-terms" className="cursor-pointer leading-relaxed">
+              Fees cover secure digital decryption, delivery, and alerts. I agree to the{' '}
+              <a href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Terms of Service</a> and{' '}
+              <a href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Privacy Policy</a>.
+            </label>
           </div>
         </div>
       )}
@@ -295,13 +316,15 @@ export default function VaultDashboard() {
                   <div className="flex justify-center gap-2 pt-1">
                     <button
                       onClick={() => handleCheckout('pass')}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg text-cyan-300 transition cursor-pointer"
+                      disabled={!agreedToCheckoutTerms}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg text-cyan-300 transition cursor-pointer disabled:opacity-40"
                     >
                       Unlock ($1.99)
                     </button>
                     <button
                       onClick={() => handleCheckout('subscription')}
-                      className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg text-slate-950 transition cursor-pointer"
+                      disabled={!agreedToCheckoutTerms}
+                      className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg text-slate-950 transition cursor-pointer disabled:opacity-40"
                     >
                       Subscribe ($2.99/mo)
                     </button>
@@ -314,7 +337,7 @@ export default function VaultDashboard() {
       </div>
 
       {/* My Sent Submissions History Section */}
-      <div className="space-y-4">
+      <div className="space-y-4 mb-8">
         <h2 className="text-lg font-semibold text-slate-300">Your Sent Message History</h2>
         {submissions.length === 0 ? (
           <p className="text-slate-500 text-sm italic">You haven't sent any messages yet.</p>
@@ -331,6 +354,15 @@ export default function VaultDashboard() {
             </div>
           ))
         )}
+      </div>
+
+      {/* Footer Legal & Policy Links */}
+      <div className="border-t border-slate-800 pt-4 flex flex-wrap justify-center gap-4 text-xs text-slate-400">
+        <a href="/faq" className="hover:text-cyan-400 transition-colors">FAQ</a>
+        <span>&bull;</span>
+        <a href="/terms" className="hover:text-cyan-400 transition-colors">Terms of Service</a>
+        <span>&bull;</span>
+        <a href="/privacy" className="hover:text-cyan-400 transition-colors">Privacy Policy</a>
       </div>
     </div>
   )
