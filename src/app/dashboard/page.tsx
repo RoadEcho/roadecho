@@ -7,6 +7,7 @@ interface Plate {
   id: string
   plate_number: string
   state: string
+  display_plate?: string
 }
 
 interface Message {
@@ -246,7 +247,7 @@ export default function VaultDashboard() {
             <div key={p.id} className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl">
               <div>
                 <span className="font-mono font-bold text-sm tracking-wider text-cyan-400">
-                  Secured Vault ID: {p.plate_number.substring(0, 12)}...
+                  {p.display_plate || p.plate_number.substring(0, 12)}
                 </span>
                 <span className="ml-2 px-2 py-0.5 text-xs bg-slate-800 text-slate-300 rounded">{p.state}</span>
               </div>
