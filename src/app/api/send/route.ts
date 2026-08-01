@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       const keys = Object.keys(body);
       for (const key of keys) {
         const val = body[key];
-        if (typeof val === 'string' && val.trim().length > 0 && !['email', 'country', 'stateRegion', 'state', 'state_region', 'message', 'text', 'sender_email', 'agreedToTerms'].includes(key)) {
+        if (typeof val === 'string' && val.trim().length > 0 && !['email', 'country', 'stateRegion', 'state', 'state_region', 'message', 'text', 'sender_email', 'agreedToTerms', 'latitude', 'longitude'].includes(key)) {
           licensePlate = val;
           break;
         }
@@ -38,6 +38,10 @@ export async function POST(request: Request) {
     const stateRegion = body.stateRegion || body.state_region || body.state || body.stateInput || body.province || body.region;
     const email = body.email || body.sender_email || body.userEmail || body.mail || body.senderEmail;
     const message = body.message || body.text || body.msg;
+
+    // Extract location coordinates if provided
+    const latitude = body.latitude || body.lat || null;
+    const longitude = body.longitude || body.lng || body.lon || null;
 
     // 2. Strict input validation
     if (!licensePlate) {
@@ -69,7 +73,7 @@ export async function POST(request: Request) {
     // 4. Generate Zero-Knowledge Cryptographic Hash
     const plateHash = getPlateHash(cleanPlate, cleanState, cleanCountry);
 
-    // 5. Save Hashed Message to Supabase Database
+    // 5. Save Hashed Message to Supabase Database with Coordinates
     const { error: dbError } = await supabase.from('messages').insert([
       {
         license_plate: plateHash,
@@ -78,6 +82,8 @@ export async function POST(request: Request) {
         sender_email: email,
         message: message,
         terms_agreed: true,
+        latitude: latitude ? parseFloat(latitude) : null,
+        longitude: longitude ? parseFloat(longitude) : null,
       }
     ]);
 
