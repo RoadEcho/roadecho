@@ -18,9 +18,18 @@ interface Message {
   created_at: string
 }
 
+interface Submission {
+  id: string
+  state_region: string
+  country: string
+  message: string
+  created_at: string
+}
+
 export default function VaultDashboard() {
   const [plates, setPlates] = useState<Plate[]>([])
   const [messages, setMessages] = useState<Message[]>([])
+  const [submissions, setSubmissions] = useState<Submission[]>([])
   const [hasAccess, setHasAccess] = useState(false)
   const [plateInput, setPlateInput] = useState('')
   const [stateInput, setStateInput] = useState('DE')
@@ -40,6 +49,7 @@ export default function VaultDashboard() {
     }
 
     try {
+      // 1. Fetch Vault data (plates, received messages, access status)
       const res = await fetch('/api/vault', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -54,6 +64,17 @@ export default function VaultDashboard() {
         setMessages(data.messages || [])
         setHasAccess(data.hasAccess || false)
       }
+
+      // 2. Fetch user's own sent message history
+      const subRes = await fetch('/api/user/submissions', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+      const subData = await subRes.json()
+      if (subRes.ok) {
+        setSubmissions(subData.submissions || [])
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load vault data.')
     }
@@ -61,7 +82,7 @@ export default function VaultDashboard() {
     setLoading(false)
   }
 
-  // --- Stripe Checkout Handler (Updated with userId) ---
+  // --- Stripe Checkout Handler ---
   const handleCheckout = async (type: 'pass' | 'subscription') => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -146,11 +167,11 @@ export default function VaultDashboard() {
   if (loading) return <div className="p-6 text-white text-center mt-20">Loading vault...</div>
 
   return (
-    <div className="max-w-2xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10">
-      <h1 className="text-2xl font-bold mb-2">Your Plate Vault</h1>
-      <p className="text-slate-400 text-sm mb-6">Claim up to 3 license plates to monitor messages.</p>
+    <div className="max-w-2xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10 mb-10">
+      <h1 className="text-2xl font-bold mb-2">Your Plate Vault & History</h1>
+      <p className="text-slate-400 text-sm mb-6">Claim up to 3 license plates and view your complete activity history.</p>
 
-      {/* Upgrade / Checkout Buttons (Hidden if user already has access) */}
+      {/* Upgrade / Checkout Buttons */}
       {!hasAccess && (
         <div className="mb-8 p-4 bg-slate-950 border border-slate-800 rounded-xl flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div>
@@ -205,6 +226,7 @@ export default function VaultDashboard() {
         </button>
       </form>
 
+      {/* Claimed Plates Section */}
       <div className="space-y-4 mb-8">
         <h2 className="text-lg font-semibold text-slate-300">Claimed Plates</h2>
         {plates.length === 0 ? (
@@ -229,7 +251,8 @@ export default function VaultDashboard() {
         )}
       </div>
 
-      <div className="space-y-4">
+      {/* Messages Received Section */}
+      <div className="space-y-4 mb-8">
         <h2 className="text-lg font-semibold text-slate-300">Messages Received</h2>
         {messages.length === 0 ? (
           <p className="text-slate-500 text-sm italic">No messages found for your plates.</p>
@@ -266,6 +289,26 @@ export default function VaultDashboard() {
                   </div>
                 </div>
               )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* My Sent Submissions History Section */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold text-slate-300">Your Sent Message History</h2>
+        {submissions.length === 0 ? (
+          <p className="text-slate-500 text-sm italic">You haven't sent any messages yet.</p>
+        ) : (
+          submissions.map((sub) => (
+            <div key={sub.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+              <div className="flex justify-between text-xs text-slate-500 font-mono">
+                <span>Destination: {sub.state_region}, {sub.country || 'USA'}</span>
+                <span>{new Date(sub.created_at).toLocaleDateString()}</span>
+              </div>
+              <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg">
+                <p className="text-slate-100 text-sm italic">"{sub.message}"</p>
+              </div>
             </div>
           ))
         )}
