@@ -179,6 +179,14 @@ export default function VaultDashboard() {
 
   return (
     <div className="max-w-2xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10 mb-10">
+      
+      {/* Navigation Link Back to Message Sender Form */}
+      <div className="mb-4">
+        <a href="/" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium">
+          &larr; Send a Secure Message
+        </a>
+      </div>
+
       <h1 className="text-2xl font-bold mb-2">Your Plate Vault & History</h1>
       <p className="text-slate-400 text-sm mb-6">Claim up to 3 license plates and view your complete activity history.</p>
 
