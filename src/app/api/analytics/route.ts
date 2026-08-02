@@ -31,16 +31,23 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access restricted.' }, { status: 403 })
     }
 
-    // 3. Fetch raw records including license_plate for unique plate counting
-    const { data: messages, error: msgError } = await supabase.from('messages').select('license_plate, created_at')
-    const { data: unlocks, error: unlockError } = await supabase.from('user_access').select('created_at')
+    // 3. Fetch records for messages, unlocks, and shares
+    const [messagesRes, unlocksRes, sharesRes] = await Promise.all([
+      supabase.from('messages').select('license_plate, created_at'),
+      supabase.from('user_access').select('created_at'),
+      supabase.from('share_events').select('created_at')
+    ])
 
-    if (msgError || unlockError) {
-      throw new Error(msgError?.message || unlockError?.message)
+    if (messagesRes.error || unlocksRes.error || sharesRes.error) {
+      throw new Error(messagesRes.error?.message || unlocksRes.error?.message || sharesRes.error?.message)
     }
 
+    const messages = messagesRes.data || []
+    const unlocks = unlocksRes.data || []
+    const shares = sharesRes.data || []
+
     // Calculate unique plates with messages
-    const uniquePlatesCount = new Set(messages?.map(m => m.license_plate).filter(Boolean)).size
+    const uniquePlatesCount = new Set(messages.map(m => m.license_plate).filter(Boolean)).size
 
     // Helper to group by timeframe
     const groupStats = (items: { created_at: string }[]) => {
@@ -59,7 +66,6 @@ export async function GET(request: Request) {
         const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
         const year = String(date.getFullYear())
         
-        // Simple ISO week key approximation
         const weekNum = Math.ceil(date.getDate() / 7)
         const week = `${month}-W${weekNum}`
 
@@ -73,11 +79,13 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      totalMessages: messages?.length || 0,
+      totalMessages: messages.length,
       uniquePlatesCount,
-      totalUnlocks: unlocks?.length || 0,
-      messagesBreakdown: groupStats(messages || []),
-      unlocksBreakdown: groupStats(unlocks || [])
+      totalUnlocks: unlocks.length,
+      totalShares: shares.length,
+      messagesBreakdown: groupStats(messages),
+      unlocksBreakdown: groupStats(unlocks),
+      sharesBreakdown: groupStats(shares)
     })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
