@@ -28,15 +28,37 @@ export async function POST(request: Request) {
 
   const session = event.data.object as Stripe.Checkout.Session
 
-  // 1. Handle Checkout Session Completed (Subscriptions & Referrals)
+  // 1. Handle Checkout Session Completed (Passes, Subscriptions & Referrals)
   if (event.type === 'checkout.session.completed') {
     const referrerId = session.metadata?.referrerId
     const subscriptionId = session.subscription as string
     const customerId = session.customer as string
-    const clientReferenceId = session.client_reference_id || session.metadata?.user_id
+    const clientReferenceId = session.client_reference_id || session.metadata?.user_id || session.metadata?.userId
+    const purchaseType = session.metadata?.type
+
+    // Handle 24-Hour Pass Purchase -> Increment Stored Passes Vault
+    if (purchaseType === 'pass' && clientReferenceId) {
+      const { data: vault } = await supabase
+        .from('user_pass_vault')
+        .select('available_passes')
+        .eq('user_id', clientReferenceId)
+        .maybeSingle()
+
+      const currentPasses = vault?.available_passes || 0
+
+      await supabase
+        .from('user_pass_vault')
+        .upsert({
+          user_id: clientReferenceId,
+          available_passes: currentPasses + 1,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id'
+        })
+    }
 
     // Track/Update Subscription for Admin Total Subscribers Metric
-    if (subscriptionId) {
+    if (subscriptionId && clientReferenceId) {
       const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as any
       
       await supabase.from('subscriptions').upsert({
