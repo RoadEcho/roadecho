@@ -32,11 +32,16 @@ export default function VaultDashboard() {
   const [messages, setMessages] = useState<Message[]>([])
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [hasAccess, setHasAccess] = useState(false)
+  const [availablePasses, setAvailablePasses] = useState(0)
+  const [passExpiresAt, setPassExpiresAt] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+  
   const [plateInput, setPlateInput] = useState('')
   const [stateInput, setStateInput] = useState('DE')
   const [agreedToCheckoutTerms, setAgreedToCheckoutTerms] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [copiedRef, setCopiedRef] = useState(false)
 
   useEffect(() => {
     fetchUserData()
@@ -58,7 +63,11 @@ export default function VaultDashboard() {
       return
     }
 
+    const currentUserId = session.user.id
+    setUserId(currentUserId)
+
     try {
+      // 1. Fetch vault messages, plates, and access status
       const res = await fetch('/api/vault', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -74,6 +83,19 @@ export default function VaultDashboard() {
         setHasAccess(data.hasAccess || false)
       }
 
+      // 2. Fetch stored passes and active pass expiration from vault
+      const { data: vaultData } = await supabase
+        .from('user_pass_vault')
+        .select('available_passes, pass_expires_at')
+        .eq('user_id', currentUserId)
+        .single()
+
+      if (vaultData) {
+        setAvailablePasses(vaultData.available_passes || 0)
+        setPassExpiresAt(vaultData.pass_expires_at || null)
+      }
+
+      // 3. Fetch user sent submissions
       const subRes = await fetch('/api/user/submissions', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -90,6 +112,30 @@ export default function VaultDashboard() {
     setLoading(false)
   }
 
+  const handleActivatePass = async () => {
+    if (!userId) return
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/vault/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setAvailablePasses((prev) => Math.max(0, prev - 1))
+        setPassExpiresAt(data.pass_expires_at)
+        fetchUserData()
+      } else {
+        setError(data.error || 'Failed to activate pass.')
+      }
+    } catch (err) {
+      setError('An error occurred while activating pass.')
+    }
+    setLoading(false)
+  }
+
   const handleCheckout = async (type: 'pass' | 'subscription') => {
     if (!agreedToCheckoutTerms) {
       setError('You must agree to the terms before purchasing.')
@@ -98,12 +144,12 @@ export default function VaultDashboard() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const userId = session?.user?.id
+      const currentUserId = session?.user?.id
 
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, userId }),
+        body: JSON.stringify({ type, userId: currentUserId }),
       })
 
       const data = await res.json()
@@ -176,6 +222,9 @@ export default function VaultDashboard() {
     }
   }
 
+  const referralLink = userId ? `https://roadecho.vercel.app/?ref=${userId}` : ''
+  const isPassActive = passExpiresAt && new Date(passExpiresAt) > new Date()
+
   if (loading) return <div className="p-6 text-white text-center mt-20">Loading vault...</div>
 
   return (
@@ -202,13 +251,67 @@ export default function VaultDashboard() {
       <h1 className="text-2xl font-bold mb-2">Your Plate Vault & History</h1>
       <p className="text-slate-400 text-sm mb-6">Claim up to 3 license plates and view your complete activity history.</p>
 
+      {/* Referral Vault & Stored Passes Section */}
+      <div className="mb-8 p-5 bg-slate-950 border border-cyan-500/30 rounded-xl space-y-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="font-bold text-cyan-400 text-base">🎁 Referral Rewards Vault</h3>
+            <p className="text-xs text-slate-400">Earn stored 24-hour passes when 5 friends use your link or someone subscribes!</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 text-center">
+            <p className="text-xl font-black text-cyan-400">{availablePasses}</p>
+            <p className="text-xs text-slate-400 mt-0.5">Stored Passes Ready</p>
+          </div>
+          <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 text-center">
+            <p className="text-xs font-bold text-emerald-400 mt-1">
+              {isPassActive ? `Active until ${new Date(passExpiresAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No active pass'}
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5">Pass Status</p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleActivatePass}
+          disabled={availablePasses <= 0 || loading}
+          className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-lg transition disabled:opacity-40 cursor-pointer"
+        >
+          Activate 24-Hour Pass From Vault
+        </button>
+
+        {/* Unique Referral Link Share Box */}
+        <div className="pt-2 border-t border-slate-900 space-y-2">
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Your Unique Referral Link</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              readOnly
+              value={referralLink}
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 font-mono select-all"
+            />
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(referralLink)
+                setCopiedRef(true)
+                setTimeout(() => setCopiedRef(false), 3000)
+              }}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer"
+            >
+              {copiedRef ? '✓ Copied!' : 'Copy Link'}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Upgrade / Checkout Section with Click-Wrap Consent */}
-      {!hasAccess && (
+      {!hasAccess && !isPassActive && (
         <div className="mb-8 p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div>
               <h3 className="font-semibold text-cyan-400">Unlock Full Access</h3>
-              <p className="text-xs text-slate-400">Get a 24-hour pass or subscribe for continuous alerts.</p>
+              <p className="text-xs text-slate-400">Get an instant 24-hour pass or subscribe for continuous alerts.</p>
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
               <button
@@ -315,7 +418,7 @@ export default function VaultDashboard() {
                 <span>{new Date(m.created_at).toLocaleDateString()}</span>
               </div>
 
-              {hasAccess ? (
+              {hasAccess || isPassActive ? (
                 <div className="p-3 bg-slate-900 border border-cyan-500/50 rounded-lg space-y-1">
                   <p className="text-xs text-cyan-400 font-semibold">🔓 Unlocked Message</p>
                   <p className="text-slate-100 text-sm">{m.message}</p>
