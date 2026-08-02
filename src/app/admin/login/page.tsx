@@ -53,7 +53,7 @@ export default function AdminLoginPage() {
 
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/admin/login`,
+        redirectTo: `${window.location.origin}/admin/update-password`,
       })
 
       if (resetError) throw resetError
