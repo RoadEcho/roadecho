@@ -291,18 +291,18 @@ export default function AdminDashboard() {
         <h2 className="text-lg font-semibold text-slate-300">Manage Administrator Team</h2>
         <p className="text-xs text-slate-400">Enter an email address to dispatch an automated password-setup invitation.</p>
         
-        <form onSubmit={handleAddAdmin} className="flex gap-2">
+        <form onSubmit={handleAddAdmin} className="flex flex-col sm:flex-row gap-2">
           <input
             type="email"
             placeholder="new.admin@gmail.com"
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
             required
-            className="flex-1 px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500"
+            className="w-full sm:flex-1 px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500"
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition cursor-pointer whitespace-nowrap"
+            className="w-full sm:w-auto px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition cursor-pointer whitespace-nowrap flex items-center justify-center"
           >
             Send Admin Invite
           </button>
@@ -312,10 +312,11 @@ export default function AdminDashboard() {
           {admins.length > 0 ? (
             admins.map((adm) => (
               <div key={adm.id} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs">
-                <span className="font-mono text-cyan-300">{adm.email}</span>
+                <span className="font-mono text-cyan-300 truncate pr-2">{adm.email}</span>
                 <button
+                  type="button"
                   onClick={() => handleRemoveAdmin(adm.id)}
-                  className="text-red-400 hover:text-red-300 transition cursor-pointer"
+                  className="text-red-400 hover:text-red-300 transition cursor-pointer shrink-0"
                 >
                   Remove
                 </button>
