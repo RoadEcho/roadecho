@@ -16,7 +16,12 @@ export default function PrivacyPolicy() {
             Vehicle owners voluntarily claim their plate inboxes digitally via secure email authentication. Physical registration documents or government identification uploads are strictly prohibited to prevent unnecessary data exposure.
           </p>
 
-          <h2 className="text-base font-semibold text-white pt-2">3. Security & Compliance Audit Trails</h2>
+          <h2 className="text-base font-semibold text-white pt-2">3. Referral Tracking & Local Storage</h2>
+          <p>
+            When visitors arrive via a unique referral link, we temporarily store the referrer identifier in your browser's local storage to attribute earned reward passes and prevent duplicate milestone claims upon conversion. Referral tracking is tied strictly to anonymized user metrics and authenticated email events.
+          </p>
+
+          <h2 className="text-base font-semibold text-white pt-2">4. Security & Compliance Audit Trails</h2>
           <p>
             We maintain secure immutable audit logs confirming terms agreement timestamps and message queue events without compromising sender or recipient anonymity.
           </p>
