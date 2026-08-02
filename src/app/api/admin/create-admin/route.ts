@@ -5,9 +5,6 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-// Put your master creator email here so ONLY you can add admins
-const MASTER_CREATOR_EMAIL = 'roadecho.admin@gmail.com'
-
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get('Authorization')
@@ -18,8 +15,19 @@ export async function POST(request: Request) {
     const token = authHeader.replace('Bearer ', '')
     const { data: { user: requestingUser }, error: authErr } = await supabase.auth.getUser(token)
 
-    if (authErr || !requestingUser || requestingUser.email !== MASTER_CREATOR_EMAIL) {
-      return NextResponse.json({ error: 'Access denied. Only the creator can add administrators.' }, { status: 403 })
+    if (authErr || !requestingUser || !requestingUser.email) {
+      return NextResponse.json({ error: 'Access denied. Invalid session.' }, { status: 403 })
+    }
+
+    // Verify the requesting user is actually in the admin_users table
+    const { data: adminCheck } = await supabase
+      .from('admin_users')
+      .select('email')
+      .eq('email', requestingUser.email.toLowerCase())
+      .single()
+
+    if (!adminCheck) {
+      return NextResponse.json({ error: 'Access denied. Only authorized administrators can add new admins.' }, { status: 403 })
     }
 
     const { email } = await request.json()
@@ -30,13 +38,13 @@ export async function POST(request: Request) {
     const cleanEmail = email.trim().toLowerCase()
 
     // 1. Invite user via Supabase Auth (generates password setup email)
-    const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(cleanEmail, {
-      redirectTo: `${request.headers.get('origin')}/admin/login`
+    const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(cleanEmail, {
+      redirectTo: `${new URL(request.url).origin}/admin/login`
     })
 
     if (inviteError) throw inviteError
 
-    // 2. Add them to the admin_users table
+    // 2. Add them to the admin_users table so they appear in the directory list
     const { error: dbError } = await supabase
       .from('admin_users')
       .upsert([{ email: cleanEmail }], { onConflict: 'email' })
