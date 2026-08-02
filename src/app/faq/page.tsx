@@ -67,6 +67,18 @@ export default function FAQPage() {
                 </p>
               </div>
               <div>
+                <strong className="text-slate-200 block">How does the Referral Rewards Vault work?</strong>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  You receive a unique referral link in your vault dashboard. When 5 friends use your link to send a message or claim a plate (or when someone subscribes), a 24-hour access pass is safely deposited into your stored pass vault.
+                </p>
+              </div>
+              <div>
+                <strong className="text-slate-200 block">How do I activate my stored referral passes?</strong>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Go to your dashboard vault, check your available stored passes, and click &quot;Activate 24-Hour Pass From Vault&quot; whenever you are ready to unlock waiting messages. Active time extends cleanly if you have remaining duration.
+                </p>
+              </div>
+              <div>
                 <strong className="text-slate-200 block">What do platform fees cover?</strong>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Fees paid on the platform strictly cover secure digital decryption, data delivery, and real-time alert services.
