@@ -354,47 +354,45 @@ export default function VaultDashboard() {
         </div>
       </div>
 
-      {!hasAccess && (
-        <div className="mb-8 p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-cyan-400">Unlock Full Access</h3>
-              <p className="text-xs text-slate-400">Get an instant 24-hour pass or subscribe for continuous alerts.</p>
-            </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <button
-                onClick={() => handleCheckout('pass')}
-                disabled={!agreedToCheckoutTerms}
-                className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg transition text-cyan-300 cursor-pointer disabled:opacity-40"
-              >
-                24-Hour Pass ($1.99)
-              </button>
-              <button
-                onClick={() => handleCheckout('subscription')}
-                disabled={!agreedToCheckoutTerms}
-                className="flex-1 sm:flex-none px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg transition text-slate-950 cursor-pointer disabled:opacity-40"
-              >
-                Subscribe ($2.99/mo)
-              </button>
-            </div>
+      <div className="mb-8 p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-cyan-400">Unlock Full Access</h3>
+            <p className="text-xs text-slate-400">Get an instant 24-hour pass or subscribe for continuous alerts.</p>
           </div>
-
-          <div className="flex items-start space-x-2 text-xs text-slate-400 pt-2 border-t border-slate-900">
-            <input
-              type="checkbox"
-              id="checkout-terms"
-              checked={agreedToCheckoutTerms}
-              onChange={(e) => setAgreedToCheckoutTerms(e.target.checked)}
-              className="mt-0.5 accent-cyan-500 cursor-pointer"
-            />
-            <label htmlFor="checkout-terms" className="cursor-pointer leading-relaxed">
-              Fees cover secure digital decryption, delivery, and alerts. I agree to the{' '}
-              <a href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Terms of Service</a> and{' '}
-              <a href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Privacy Policy</a>.
-            </label>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => handleCheckout('pass')}
+              disabled={!agreedToCheckoutTerms}
+              className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg transition text-cyan-300 cursor-pointer disabled:opacity-40"
+            >
+              24-Hour Pass ($1.99)
+            </button>
+            <button
+              onClick={() => handleCheckout('subscription')}
+              disabled={!agreedToCheckoutTerms}
+              className="flex-1 sm:flex-none px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg transition text-slate-950 cursor-pointer disabled:opacity-40"
+            >
+              Subscribe ($2.99/mo)
+            </button>
           </div>
         </div>
-      )}
+
+        <div className="flex items-start space-x-2 text-xs text-slate-400 pt-2 border-t border-slate-900">
+          <input
+            type="checkbox"
+            id="checkout-terms"
+            checked={agreedToCheckoutTerms}
+            onChange={(e) => setAgreedToCheckoutTerms(e.target.checked)}
+            className="mt-0.5 accent-cyan-500 cursor-pointer"
+          />
+          <label htmlFor="checkout-terms" className="cursor-pointer leading-relaxed">
+            Fees cover secure digital decryption, delivery, and alerts. I agree to the{' '}
+            <a href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Terms of Service</a> and{' '}
+            <a href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Privacy Policy</a>.
+          </label>
+        </div>
+      </div>
 
       {error && <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">{error}</div>}
 
