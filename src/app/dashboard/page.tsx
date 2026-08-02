@@ -35,6 +35,7 @@ export default function VaultDashboard() {
   const [availablePasses, setAvailablePasses] = useState(0)
   const [passExpiresAt, setPassExpiresAt] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   
   const [plateInput, setPlateInput] = useState('')
   const [stateInput, setStateInput] = useState('DE')
@@ -65,6 +66,7 @@ export default function VaultDashboard() {
 
     const currentUserId = session.user.id
     setUserId(currentUserId)
+    setUserEmail(session.user.email || null)
 
     try {
       const res = await fetch('/api/vault', {
@@ -197,7 +199,6 @@ export default function VaultDashboard() {
       if (!res.ok) {
         setError(data.error || 'Failed to claim plate.')
       } else {
-        // Trigger referral conversion check on claim if ref ID is present
         const referrerId = localStorage.getItem('road_echo_ref')
         if (referrerId && session.user.email) {
           try {
@@ -254,7 +255,14 @@ export default function VaultDashboard() {
       </div>
 
       <h1 className="text-2xl font-bold mb-2">Your Plate Vault & History</h1>
-      <p className="text-slate-400 text-sm mb-6">Claim up to 3 license plates and view your complete activity history.</p>
+      <p className="text-slate-400 text-sm mb-4">Claim up to 3 license plates and view your complete activity history.</p>
+
+      {userEmail && (
+        <div className="mb-6 inline-flex items-center gap-2 px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-full text-xs text-slate-300">
+          <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+          Logged in as: <span className="font-mono text-cyan-300">{userEmail}</span>
+        </div>
+      )}
 
       <div className="mb-8 p-5 bg-slate-950 border border-cyan-500/30 rounded-xl space-y-4">
         <div>
