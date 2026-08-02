@@ -42,10 +42,21 @@ export default function LoginPage() {
       <div className="w-full max-w-md p-8 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md">
         
         {/* Back Button */}
-        <div className="mb-6">
+        <div className="mb-4">
           <a href="/" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium">
             &larr; Back to Home
           </a>
+        </div>
+
+        {/* Logo Display */}
+        <div className="flex justify-center mb-4">
+          <div className="w-56 h-32 overflow-hidden relative rounded-2xl border border-slate-800 shadow-xl flex items-center justify-center bg-slate-950">
+            <img 
+              src="/logo.PNG" 
+              alt="RoadEcho Logo" 
+              className="absolute w-72 max-w-none scale-110 translate-y-1 object-cover" 
+            />
+          </div>
         </div>
 
         <h1 className="text-2xl font-bold mb-2">RoadEcho Login</h1>
