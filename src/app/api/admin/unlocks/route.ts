@@ -20,25 +20,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized session' }, { status: 401 })
     }
 
-    // Try querying 'user_access' first
-    let { data: unlocks, error } = await supabase
-      .from('user_access')
-      .select('id, user_id, license_plate, created_at')
+    // Query the 'passes' table where customer unlocks/passes are stored
+    const { data: unlocks, error } = await supabase
+      .from('passes')
+      .select('*')
       .order('created_at', { ascending: false })
       .limit(50)
 
-    // Fallback to 'unlocks' table if user_access is empty or errors out
-    if (error || !unlocks || unlocks.length === 0) {
-      const altQuery = await supabase
-        .from('unlocks')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50)
-
-      if (!altQuery.error) {
-        unlocks = altQuery.data
-      }
-    }
+    if (error) throw error
 
     // Fetch auth users safely
     const { data: authData } = await supabase.auth.admin.listUsers()
@@ -50,8 +39,8 @@ export async function GET(request: Request) {
 
     const formattedUnlocks = (unlocks || []).map((u: any) => ({
       id: u.id,
-      email: emailMap.get(u.user_id) || 'Unknown User',
-      licensePlate: u.license_plate || u.plate || u.licensePlate || 'N/A',
+      email: emailMap.get(u.user_id) || u.email || 'Customer Pass',
+      licensePlate: u.license_plate || u.plate || 'Vault Unlock',
       createdAt: u.created_at || u.timestamp || new Date().toISOString()
     }))
 
