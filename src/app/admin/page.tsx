@@ -54,12 +54,20 @@ interface SenderUser {
   lastMessageAt: string
 }
 
+interface UnlockRecord {
+  id: string
+  email: string
+  licensePlate: string
+  createdAt: string
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [admins, setAdmins] = useState<AdminUser[]>([])
   const [senders, setSenders] = useState<SenderUser[]>([])
+  const [unlocksList, setUnlocksList] = useState<UnlockRecord[]>([])
   const [newEmail, setNewEmail] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -129,6 +137,14 @@ export default function AdminDashboard() {
       if (senderRes.ok) {
         const senderData = await senderRes.json()
         setSenders(senderData.senders || [])
+      }
+
+      const unlocksRes = await fetch('/api/admin/unlocks', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      })
+      if (unlocksRes.ok) {
+        const unlockData = await unlocksRes.json()
+        setUnlocksList(unlockData.unlocks || [])
       }
     } catch (err: any) {
       setError(err.message)
@@ -371,6 +387,28 @@ export default function AdminDashboard() {
             ))
           ) : (
             <p className="text-slate-500 text-sm italic">No message senders recorded yet.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Vault Unlocks Directory Section */}
+      <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl mb-8">
+        <h2 className="text-lg font-semibold mb-4 text-slate-300">Vault Unlocks Directory</h2>
+        <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+          {unlocksList.length > 0 ? (
+            unlocksList.map((item) => (
+              <div key={item.id} className="flex justify-between items-center p-3 bg-slate-900 border border-slate-800 rounded-lg text-sm">
+                <div>
+                  <p className="font-medium text-white">{item.email}</p>
+                  <p className="text-xs text-cyan-400 font-mono mt-0.5">Plate: {item.licensePlate}</p>
+                </div>
+                <div className="text-right text-xs text-slate-400 font-mono">
+                  {new Date(item.createdAt).toLocaleString()}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-slate-500 text-sm italic">No vault unlocks recorded yet.</p>
           )}
         </div>
       </div>
