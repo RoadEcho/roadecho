@@ -129,6 +129,7 @@ export default function Home() {
     }
 
     try {
+      // 1. Send the secure message
       const res = await fetch('/api/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -146,6 +147,21 @@ export default function Home() {
 
       const data = await res.json();
       if (res.ok) {
+        // 2. Check if there's a stored referral ID and trigger conversion credit!
+        const referrerId = localStorage.getItem('road_echo_ref');
+        if (referrerId && senderEmail) {
+          try {
+            await fetch('/api/referral/convert', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: senderEmail, referrerId }),
+            });
+            localStorage.removeItem('road_echo_ref');
+          } catch (refErr) {
+            console.error('Failed to log referral conversion', refErr);
+          }
+        }
+
         setStatus('Secure message sent successfully!');
         setPlate('');
         setRegion('');
@@ -298,7 +314,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Curiosity Hook Banner (Moved under Send Message) */}
+        {/* Curiosity Hook Banner */}
         <div className="mt-6 p-4 bg-gradient-to-r from-cyan-950/60 to-slate-900 border border-cyan-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <h3 className="text-sm font-bold text-cyan-400">🚗 Own a vehicle?</h3>
