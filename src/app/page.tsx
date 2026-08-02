@@ -71,7 +71,7 @@ export default function Home() {
       // Silently fail
     }
 
-    const shareText = "Ever wish you could anonymously text a driver about their parking or send a cool note? Check out RoadEcho — the safe, anonymous way to message any vehicle license plate! 🚗💨 https://roadecho.vercel.app";
+    const shareText = "Ever wanted to drop a parking tip or a great compliment to a driver? Check out RoadEcho — the safe, anonymous way to message any vehicle license plate! 🚗💨 https://roadecho.vercel.app";
 
     if (navigator.share) {
       try {
@@ -289,7 +289,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Curiosity Hook Banner (Moved under Send Message) */}
+        {/* Curiosity Hook Banner */}
         <div className="mt-6 p-4 bg-gradient-to-r from-cyan-950/60 to-slate-900 border border-cyan-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <h3 className="text-sm font-bold text-cyan-400">🚗 Own a vehicle?</h3>
@@ -309,9 +309,11 @@ export default function Home() {
         <div className="inline-block p-2 bg-cyan-500/10 text-cyan-400 rounded-full mb-3 text-lg">
           🚗💨
         </div>
-        <h3 className="text-base font-bold text-white mb-1">Find out if someone messaged your license plate!</h3>
+        <h3 className="text-base font-bold text-white mb-1">
+          Ever wanted to drop a parking tip or a great compliment to a driver?
+        </h3>
         <p className="text-slate-400 text-xs mb-4 leading-relaxed">
-          Check your secure plate vault and share RoadEcho with friends so they can check their plates too!
+          Share RoadEcho with friends and let them check their plates too!
         </p>
         
         <button
