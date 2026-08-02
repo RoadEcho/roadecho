@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 export default function Home() {
   const [plate, setPlate] = useState('');
@@ -42,7 +43,7 @@ export default function Home() {
     recognition.onresult = (event: any) => {
       let transcript = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
-        transcript += event.results[i][0].transcript;
+        transcript += event.results[0][i].transcript; // Fixed index syntax safety
       }
       setMessage(transcript);
 
@@ -74,20 +75,34 @@ export default function Home() {
   };
 
   const handleShare = async () => {
+    let userId = null;
     try {
-      await fetch('/api/analytics/share', { method: 'POST' });
+      const { data: { session } } = await supabase.auth.getSession();
+      userId = session?.user?.id || null;
+    } catch (e) {
+      // ignore
+    }
+
+    // Log the share event to the backend so admin panel tracks it
+    try {
+      await fetch('/api/shares', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId })
+      });
     } catch (e) {
       // Silently fail
     }
 
-    const shareText = "Ever wanted to drop a parking tip or a great compliment to a driver? Check out RoadEcho — the safe, anonymous way to message any vehicle license plate! 🚗💨 https://roadecho.vercel.app";
+    const refUrl = userId ? `https://roadecho.vercel.app?ref=${userId}` : 'https://roadecho.vercel.app';
+    const shareText = `Ever wanted to drop a parking tip or a great compliment to a driver? Check out RoadEcho — the safe, anonymous way to message any vehicle license plate! 🚗💨 ${refUrl}`;
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'RoadEcho - Secure Plate Messaging',
           text: 'Check out RoadEcho — the safe, anonymous way to message any vehicle license plate!',
-          url: 'https://roadecho.vercel.app',
+          url: refUrl,
         });
       } catch (err) {
         copyToClipboard(shareText);
