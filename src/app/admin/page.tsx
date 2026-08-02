@@ -8,6 +8,7 @@ interface AnalyticsData {
   totalMessages: number
   uniquePlatesCount: number
   totalUnlocks: number
+  totalShares: number
   messagesBreakdown: {
     daily: Record<string, number>
     weekly: Record<string, number>
@@ -15,6 +16,12 @@ interface AnalyticsData {
     yearly: Record<string, number>
   }
   unlocksBreakdown: {
+    daily: Record<string, number>
+    weekly: Record<string, number>
+    monthly: Record<string, number>
+    yearly: Record<string, number>
+  }
+  sharesBreakdown: {
     daily: Record<string, number>
     weekly: Record<string, number>
     monthly: Record<string, number>
@@ -169,7 +176,7 @@ export default function AdminDashboard() {
   if (error && !data) return <div className="p-10 text-red-400 text-center bg-slate-950 min-h-screen">Access Denied: {error}</div>
 
   return (
-    <div className="max-w-4xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10 mb-10">
+    <div className="max-w-6xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10 mb-10">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-cyan-400">🔒 RoadEcho Admin Command Center</h1>
         <div className="flex gap-2">
@@ -186,7 +193,7 @@ export default function AdminDashboard() {
       {success && <div className="mb-4 p-3 bg-emerald-950/50 border border-emerald-800 rounded-lg text-emerald-300 text-sm">{success}</div>}
 
       {/* Overview Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-xs uppercase tracking-wider">Total Messages</p>
           <p className="text-3xl font-bold text-cyan-400 mt-1">{data?.totalMessages || 0}</p>
@@ -200,6 +207,10 @@ export default function AdminDashboard() {
           <p className="text-3xl font-bold text-emerald-400 mt-1">{data?.totalUnlocks || 0}</p>
         </div>
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-xs uppercase tracking-wider">Total Shares</p>
+          <p className="text-3xl font-bold text-teal-400 mt-1">{data?.totalShares || 0}</p>
+        </div>
+        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-xs uppercase tracking-wider">Total Accounts</p>
           <p className="text-3xl font-bold text-purple-400 mt-1">{userStats?.totalUsers || 0}</p>
         </div>
@@ -209,7 +220,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Message & Unlock Breakdowns */}
+      {/* Timeframe Switcher Tabs */}
       <div className="grid grid-cols-2 sm:flex gap-2 mb-6 border-b border-slate-800 pb-4">
         {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(tab => (
           <button
@@ -224,7 +235,8 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      {/* Messages, Unlocks & Shares Breakdowns */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <h2 className="text-lg font-semibold mb-4 text-slate-300 capitalize">Messages ({activeTab})</h2>
           <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
@@ -249,6 +261,22 @@ export default function AdminDashboard() {
                 <div key={key} className="flex justify-between items-center p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-sm font-mono">
                   <span className="text-slate-300">{key}</span>
                   <span className="text-emerald-400 font-bold">{val} unlocks</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-slate-500 text-sm italic">No data recorded for this period.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
+          <h2 className="text-lg font-semibold mb-4 text-slate-300 capitalize">Shares ({activeTab})</h2>
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+            {data?.sharesBreakdown[activeTab] && Object.keys(data.sharesBreakdown[activeTab]).length > 0 ? (
+              Object.entries(data.sharesBreakdown[activeTab]).map(([key, val]) => (
+                <div key={key} className="flex justify-between items-center p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-sm font-mono">
+                  <span className="text-slate-300">{key}</span>
+                  <span className="text-teal-400 font-bold">{val} shares</span>
                 </div>
               ))
             ) : (
