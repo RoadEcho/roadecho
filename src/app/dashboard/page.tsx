@@ -467,7 +467,7 @@ export default function VaultDashboard() {
                 <div className="p-3 bg-slate-900 border border-cyan-500/50 rounded-lg space-y-1">
                   <div className="flex justify-between items-center">
                     <p className="text-xs text-cyan-400 font-semibold">🔓 Unlocked Message</p>
-                    {isPassActive && !hasAccess && (
+                    {isPassActive && (
                       <span className="text-xs font-mono text-emerald-400">
                         Expires in: {timeLeft}
                       </span>
