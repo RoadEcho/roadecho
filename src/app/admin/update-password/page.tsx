@@ -10,7 +10,7 @@ export default function UpdatePassword() {
   const router = useRouter()
   const supabase = createClientComponentClient()
 
-  useEffect({
+  useEffect(() => {
     // Listen for the recovery event to ensure session is active from the link
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
       if (event === 'PASSWORD_RECOVERY') {
@@ -32,7 +32,7 @@ export default function UpdatePassword() {
       setErrorMsg(error.message)
     } else {
       alert('Password updated successfully!')
-      router.push('/admin') // Redirect to your admin login/dashboard
+      router.push('/admin') 
     }
   }
 
