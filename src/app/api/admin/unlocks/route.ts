@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     if (error || !unlocks || unlocks.length === 0) {
       const altQuery = await supabase
         .from('unlocks')
-        .select('id, user_id, license_plate, created_at')
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(50)
 
@@ -44,16 +44,15 @@ export async function GET(request: Request) {
     const { data: authData } = await supabase.auth.admin.listUsers()
     const authUsers = authData?.users || []
     
-    // Explicitly type the mapped tuple array for the Map constructor
     const emailMap = new Map<string, string>(
       authUsers.map((u): [string, string] => [u.id, u.email || 'Unknown'])
     )
 
-    const formattedUnlocks = (unlocks || []).map(u => ({
+    const formattedUnlocks = (unlocks || []).map((u: any) => ({
       id: u.id,
       email: emailMap.get(u.user_id) || 'Unknown User',
-      licensePlate: u.license_plate || u.plate || 'N/A',
-      createdAt: u.created_at || u.timestamp
+      licensePlate: u.license_plate || u.plate || u.licensePlate || 'N/A',
+      createdAt: u.created_at || u.timestamp || new Date().toISOString()
     }))
 
     return NextResponse.json({ unlocks: formattedUnlocks })
