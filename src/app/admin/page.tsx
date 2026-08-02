@@ -60,13 +60,11 @@ export default function AdminDashboard() {
       setError(null)
       const { data: { session } } = await supabase.auth.getSession()
       
-      // 1. If no session exists at all, redirect to login
       if (!session || !session.user || !session.user.email) {
-        router.push('/login')
+        router.push('/admin/login')
         return
       }
 
-      // 2. Check dynamically against the admin_users table
       const { data: adminRecord, error: adminErr } = await supabase
         .from('admin_users')
         .select('email')
@@ -75,11 +73,10 @@ export default function AdminDashboard() {
 
       if (adminErr || !adminRecord) {
         await supabase.auth.signOut()
-        router.push('/login')
+        router.push('/admin/login')
         return
       }
 
-      // 3. Fetch analytics using secure bearer token
       const res = await fetch('/api/analytics', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -89,7 +86,6 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error(json.error || 'Failed to load analytics')
       setData(json)
 
-      // 4. Fetch user stats and directory
       const userRes = await fetch('/api/admin/users', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -103,7 +99,6 @@ export default function AdminDashboard() {
         }
       }
 
-      // 5. Fetch separate admin team list if endpoint exists
       const adminRes = await fetch('/api/admin/users-list', {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       })
@@ -127,7 +122,7 @@ export default function AdminDashboard() {
     if (!session) return
 
     try {
-      const res = await fetch('/api/admin/users', {
+      const res = await fetch('/api/admin/create-admin', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -139,7 +134,7 @@ export default function AdminDashboard() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to add admin')
 
-      setSuccess(`Successfully added ${newEmail}`)
+      setSuccess(`Admin invitation sent to ${newEmail}`)
       setNewEmail('')
       checkAdminAndFetch()
     } catch (err: any) {
@@ -177,9 +172,14 @@ export default function AdminDashboard() {
     <div className="max-w-4xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10 mb-10">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-cyan-400">🔒 RoadEcho Admin Command Center</h1>
-        <button onClick={checkAdminAndFetch} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition cursor-pointer">
-          Refresh Data
-        </button>
+        <div className="flex gap-2">
+          <button onClick={checkAdminAndFetch} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition cursor-pointer">
+            Refresh Data
+          </button>
+          <button onClick={async () => { await supabase.auth.signOut(); router.push('/admin/login'); }} className="px-4 py-2 bg-red-950/60 hover:bg-red-900/60 text-red-300 border border-red-800 rounded-lg text-sm transition cursor-pointer">
+            Sign Out
+          </button>
+        </div>
       </div>
 
       {error && <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">{error}</div>}
@@ -261,6 +261,7 @@ export default function AdminDashboard() {
       {/* Admin Team Management Section */}
       <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl mb-8 space-y-4">
         <h2 className="text-lg font-semibold text-slate-300">Manage Administrator Team</h2>
+        <p className="text-xs text-slate-400">Enter an email address to dispatch an automated password-setup invitation.</p>
         
         <form onSubmit={handleAddAdmin} className="flex gap-2">
           <input
@@ -273,9 +274,9 @@ export default function AdminDashboard() {
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition cursor-pointer"
+            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition cursor-pointer whitespace-nowrap"
           >
-            Add Admin
+            Send Admin Invite
           </button>
         </form>
 
