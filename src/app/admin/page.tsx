@@ -177,9 +177,8 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-6xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10 mb-10">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-cyan-400">🔒 RoadEcho Admin Command Center</h1>
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-3 mb-6">
+        <div className="flex justify-end gap-2">
           <button onClick={checkAdminAndFetch} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition cursor-pointer">
             Refresh Data
           </button>
@@ -187,6 +186,7 @@ export default function AdminDashboard() {
             Sign Out
           </button>
         </div>
+        <h1 className="text-2xl font-bold text-cyan-400">🔒 RoadEcho Admin Command Center</h1>
       </div>
 
       {error && <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">{error}</div>}
