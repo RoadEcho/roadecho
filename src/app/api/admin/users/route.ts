@@ -8,12 +8,18 @@ const supabase = createClient(
 
 export async function GET(request: Request) {
   try {
-    const { data: { users }, error } = await supabase.auth.admin.listUsers();
+    // Fetch Supabase Auth users and admin_users table records in parallel
+    const [authUsersRes, adminsRes] = await Promise.all([
+      supabase.auth.admin.listUsers(),
+      supabase.from('admin_users').select('id, email, created_at').order('created_at', { ascending: false })
+    ]);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (authUsersRes.error) {
+      return NextResponse.json({ error: authUsersRes.error.message }, { status: 400 });
     }
 
+    const users = authUsersRes.data.users || [];
+    const admins = adminsRes.data || [];
     const totalUsers = users.length;
 
     // Define active users as anyone who logged in within the last 30 days
@@ -29,6 +35,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       totalUsers,
       activeUsers,
+      admins, // <--- Added admins array here so the dashboard displays them
       users: users.map(u => ({
         id: u.id,
         email: u.email,
