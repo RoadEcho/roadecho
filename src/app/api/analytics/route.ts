@@ -31,21 +31,23 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access restricted.' }, { status: 403 })
     }
 
-    // 3. Fetch records for messages, unlocks, shares, and active subscriptions
-    const [messagesRes, unlocksRes, sharesRes, subsRes] = await Promise.all([
+    // 3. Fetch records for messages, unlocks, shares, referrals, and active subscriptions
+    const [messagesRes, unlocksRes, sharesRes, referralsRes, subsRes] = await Promise.all([
       supabase.from('messages').select('license_plate, created_at'),
       supabase.from('user_access').select('created_at'),
-      supabase.from('shares').select('created_at'), // Updated from share_events to shares
+      supabase.from('shares').select('created_at'),
+      supabase.from('referrals').select('created_at'), // Added referrals lookup
       supabase.from('subscriptions').select('created_at', { count: 'exact', head: true }).eq('status', 'active')
     ])
 
-    if (messagesRes.error || unlocksRes.error || sharesRes.error || subsRes.error) {
-      throw new Error(messagesRes.error?.message || unlocksRes.error?.message || sharesRes.error?.message || subsRes.error?.message)
+    if (messagesRes.error || unlocksRes.error || sharesRes.error || referralsRes.error || subsRes.error) {
+      throw new Error(messagesRes.error?.message || unlocksRes.error?.message || sharesRes.error?.message || referralsRes.error?.message || subsRes.error?.message)
     }
 
     const messages = messagesRes.data || []
     const unlocks = unlocksRes.data || []
     const shares = sharesRes.data || []
+    const referrals = referralsRes.data || []
     const totalSubscribers = subsRes.count || 0
 
     // Calculate unique plates with messages
@@ -86,6 +88,7 @@ export async function GET(request: Request) {
       totalUnlocks: unlocks.length,
       totalSubscribers,
       totalShares: shares.length,
+      totalReferrals: referrals.length, // Reports live total referral count
       messagesBreakdown: groupStats(messages),
       unlocksBreakdown: groupStats(unlocks),
       sharesBreakdown: groupStats(shares)
