@@ -173,6 +173,20 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Curiosity Hook Banner */}
+        <div className="mb-6 p-4 bg-gradient-to-r from-cyan-950/60 to-slate-900 border border-cyan-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-bold text-cyan-400">🚗 Own a vehicle?</h3>
+            <p className="text-xs text-slate-300 mt-0.5">Curious if another driver left a note for you? Check your plate in your secure vault.</p>
+          </div>
+          <a 
+            href="/dashboard" 
+            className="whitespace-nowrap px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition"
+          >
+            Check My Plate &rarr;
+          </a>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
@@ -256,7 +270,7 @@ export default function Home() {
             />
           </div>
 
-          {/* Legal Click-Wrap Agreement with Clickable Links */}
+          {/* Legal Click-Wrap Agreement without fees mention */}
           <div className="flex items-start space-x-2 text-xs text-slate-400 pt-1">
             <input
               type="checkbox"
@@ -267,7 +281,7 @@ export default function Home() {
               className="mt-0.5 accent-cyan-500 cursor-pointer"
             />
             <label htmlFor="terms" className="cursor-pointer leading-relaxed">
-              I agree that fees cover secure digital decryption and delivery services. I understand RoadEcho does not unmask anonymous senders and abides by{' '}
+              I understand RoadEcho does not unmask anonymous senders and abides by{' '}
               <a href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Terms</a> &amp;{' '}
               <a href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Privacy Policy</a>.
             </label>
