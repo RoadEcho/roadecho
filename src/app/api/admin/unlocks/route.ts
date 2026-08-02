@@ -29,9 +29,14 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
-    // Fetch auth users to map user_id to email addresses easily
-    const { data: { users: authUsers } } = await supabase.auth.admin.listUsers()
-    const emailMap = new Map(authUsers.map(u => [u.id, u.email]))
+    // Fetch auth users safely
+    const { data: authData } = await supabase.auth.admin.listUsers()
+    const authUsers = authData?.users || []
+    
+    // Explicitly type the mapped tuple array for the Map constructor
+    const emailMap = new Map<string, string>(
+      authUsers.map((u): [string, string] => [u.id, u.email || 'Unknown'])
+    )
 
     const formattedUnlocks = (unlocks || []).map(u => ({
       id: u.id,
