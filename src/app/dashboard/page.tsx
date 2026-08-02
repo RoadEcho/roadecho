@@ -34,6 +34,7 @@ export default function VaultDashboard() {
   const [hasAccess, setHasAccess] = useState(false)
   const [availablePasses, setAvailablePasses] = useState(0)
   const [passExpiresAt, setPassExpiresAt] = useState<string | null>(null)
+  const [timeLeft, setTimeLeft] = useState<string>('')
   const [userId, setUserId] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   
@@ -55,6 +56,31 @@ export default function VaultDashboard() {
       return () => clearTimeout(timer)
     }
   }, [])
+
+  // Live countdown timer effect
+  useEffect(() => {
+    if (!passExpiresAt) return
+
+    const updateTimer = () => {
+      const now = new Date().getTime()
+      const expiry = new Date(passExpiresAt).getTime()
+      const difference = expiry - now
+
+      if (difference <= 0) {
+        setTimeLeft('Expired')
+        fetchUserData()
+      } else {
+        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60))
+        const seconds = Math.floor((difference % (1000 * 60)) / 1000)
+        setTimeLeft(`${hours}h ${minutes}m ${seconds}s`)
+      }
+    }
+
+    updateTimer()
+    const interval = setInterval(updateTimer, 1000)
+    return () => clearInterval(interval)
+  }, [passExpiresAt])
 
   async function fetchUserData() {
     setLoading(true)
@@ -277,9 +303,9 @@ export default function VaultDashboard() {
           </div>
           <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 text-center">
             <p className="text-xs font-bold text-emerald-400 mt-1">
-              {isPassActive ? `Active until ${new Date(passExpiresAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No active pass'}
+              {isPassActive ? timeLeft || 'Active' : 'No active pass'}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">Pass Status</p>
+            <p className="text-xs text-slate-400 mt-0.5">Pass Countdown</p>
           </div>
         </div>
 
@@ -314,7 +340,7 @@ export default function VaultDashboard() {
         </div>
       </div>
 
-      {!hasAccess && !isPassActive && (
+      {!hasAccess && (
         <div className="mb-8 p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div>
