@@ -20,6 +20,11 @@ export default function TermsOfService() {
           <p>
             All messages are screened in real-time by autonomous AI pre-moderation filters. Harassment, threats, stalking vectors, or illegal content are automatically blocked. Violation of platform rules results in permanent transmission bans.
           </p>
+
+          <h2 className="text-base font-semibold text-white pt-2">4. Referral Rewards Program</h2>
+          <p>
+            Users may earn stored 24-hour access passes through our referral program by sharing their unique referral link. Stored vault passes are non-transferable, hold no cash value, and cannot be redeemed for fiat currency or refunds. Self-referrals, automated script signups, and fraudulent conversion padding will result in immediate forfeiture of stored vault passes and permanent account suspension. RoadEcho reserves the right to alter, suspend, or terminate the referral reward structure at any time without notice.
+          </p>
         </div>
 
         <div className="mt-8 pt-4 border-t border-slate-800 text-center">
