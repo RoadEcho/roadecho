@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
     // Track/Update Subscription for Admin Total Subscribers Metric
     if (subscriptionId) {
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+      const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as any
       
       await supabase.from('subscriptions').upsert({
         stripe_subscription_id: subscription.id,
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
 
   // 2. Handle Subscription Updates (Renewals/Changes)
   if (event.type === 'customer.subscription.updated') {
-    const subscription = event.data.object as Stripe.Subscription
+    const subscription = event.data.object as any
 
     await supabase.from('subscriptions').upsert({
       stripe_subscription_id: subscription.id,
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
 
   // 3. Handle Subscription Cancellations
   if (event.type === 'customer.subscription.deleted') {
-    const subscription = event.data.object as Stripe.Subscription
+    const subscription = event.data.object as any
 
     await supabase.from('subscriptions').update({
       status: 'canceled',
