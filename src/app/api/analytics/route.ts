@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     const [messagesRes, unlocksRes, sharesRes, subsRes] = await Promise.all([
       supabase.from('messages').select('license_plate, created_at'),
       supabase.from('user_access').select('created_at'),
-      supabase.from('share_events').select('created_at'),
+      supabase.from('shares').select('created_at'), // Updated from share_events to shares
       supabase.from('subscriptions').select('created_at', { count: 'exact', head: true }).eq('status', 'active')
     ])
 
