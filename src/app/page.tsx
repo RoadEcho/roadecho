@@ -12,6 +12,7 @@ export default function Home() {
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleVoiceInput = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -37,7 +38,7 @@ export default function Home() {
       setMessage(transcript);
 
       if (event.results[event.results.length - 1].isFinal) {
-        recognition.abort(); // Forces iOS Safari to instantly release the hardware mic
+        recognition.abort();
       }
     };
 
@@ -64,20 +65,34 @@ export default function Home() {
   };
 
   const handleShare = async () => {
+    // Track share event in admin analytics
+    try {
+      await fetch('/api/analytics/share', { method: 'POST' });
+    } catch (e) {
+      // Silently fail so user experience isn't interrupted
+    }
+
+    const shareText = "Ever wish you could anonymously text a driver about their parking or send a cool note? Check out RoadEcho — the safe, anonymous way to message any vehicle license plate! 🚗💨 https://roadecho.vercel.app";
+
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'RoadEcho',
-          text: 'Check out RoadEcho—secure, privacy-first plate-to-plate messaging!',
-          url: window.location.origin,
+          title: 'RoadEcho - Secure Plate Messaging',
+          text: 'Check out RoadEcho — the safe, anonymous way to message any vehicle license plate!',
+          url: 'https://roadecho.vercel.app',
         });
       } catch (err) {
-        // User cancelled share
+        copyToClipboard(shareText);
       }
     } else {
-      navigator.clipboard.writeText(window.location.origin);
-      alert('RoadEcho link copied to clipboard!');
+      copyToClipboard(shareText);
     }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,7 +105,6 @@ export default function Home() {
     setLoading(true);
     setStatus(null);
 
-    // Capture user location coordinates if permitted by the browser
     let latitude = null;
     let longitude = null;
 
@@ -160,13 +174,6 @@ export default function Home() {
             Privacy-first plate-to-plate messaging with cryptographic hashing and AI pre-moderation.
           </p>
           <div className="flex items-center space-x-3 ml-2">
-            <button
-              type="button"
-              onClick={handleShare}
-              className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium whitespace-nowrap cursor-pointer bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700"
-            >
-              📤 Share
-            </button>
             <a href="/dashboard" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium whitespace-nowrap">
               Plate Vault &rarr;
             </a>
@@ -270,7 +277,7 @@ export default function Home() {
             />
           </div>
 
-          {/* Legal Click-Wrap Agreement without fees mention */}
+          {/* Legal Click-Agreement */}
           <div className="flex items-start space-x-2 text-xs text-slate-400 pt-1">
             <input
               type="checkbox"
@@ -300,6 +307,30 @@ export default function Home() {
           <div className="mt-4 p-3 bg-slate-950 border border-slate-800 rounded-lg text-center text-sm text-cyan-300">
             {status}
           </div>
+        )}
+      </div>
+
+      {/* Viral Share Card */}
+      <div className="w-full max-w-md mx-auto mt-6 p-6 bg-slate-900 border border-cyan-500/30 rounded-2xl shadow-xl text-center">
+        <div className="inline-block p-2 bg-cyan-500/10 text-cyan-400 rounded-full mb-3 text-lg">
+          🚗💨
+        </div>
+        <h3 className="text-base font-bold text-white mb-1">Find out if someone messaged your license plate!</h3>
+        <p className="text-slate-400 text-xs mb-4 leading-relaxed">
+          Check your secure plate vault and share RoadEcho with friends so they can check their plates too!
+        </p>
+        
+        <button
+          onClick={handleShare}
+          className="w-full py-3 px-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 text-sm"
+        >
+          <span>📤 Share RoadEcho with Friends</span>
+        </button>
+
+        {copied && (
+          <p className="text-xs text-emerald-400 mt-2 font-medium">
+            ✓ Link copied to clipboard! Ready to paste anywhere.
+          </p>
         )}
       </div>
 
