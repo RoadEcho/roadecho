@@ -40,10 +40,17 @@ export async function GET(request: Request) {
       .from('user_access')
       .select('*', { count: 'exact', head: true });
 
+    // Fetch total active monthly subscribers count
+    const { count: totalSubscribers } = await supabase
+      .from('subscriptions')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'active');
+
     return NextResponse.json({ 
       success: true, 
       totalMessages: totalMessages || 0,
       totalUnlocks: totalUnlocks || 0,
+      totalSubscribers: totalSubscribers || 0,
       messagesBreakdown: { daily: {}, weekly: {}, monthly: {}, yearly: {} },
       unlocksBreakdown: { daily: {}, weekly: {}, monthly: {}, yearly: {} }
     });
