@@ -8,6 +8,7 @@ interface AnalyticsData {
   totalMessages: number
   uniquePlatesCount: number
   totalUnlocks: number
+  totalSubscribers: number
   totalShares: number
   totalReferrals: number
   messagesBreakdown: {
@@ -209,7 +210,7 @@ export default function AdminDashboard() {
       {success && <div className="mb-4 p-3 bg-emerald-950/50 border border-emerald-800 rounded-lg text-emerald-300 text-sm">{success}</div>}
 
       {/* Overview Metrics Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-xs uppercase tracking-wider">Total Messages</p>
           <p className="text-3xl font-bold text-cyan-400 mt-1">{data?.totalMessages || 0}</p>
@@ -221,6 +222,10 @@ export default function AdminDashboard() {
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-xs uppercase tracking-wider">Total Unlocks</p>
           <p className="text-3xl font-bold text-emerald-400 mt-1">{data?.totalUnlocks || 0}</p>
+        </div>
+        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-xs uppercase tracking-wider">Total Subscribers</p>
+          <p className="text-3xl font-bold text-cyan-300 mt-1">{data?.totalSubscribers || 0}</p>
         </div>
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-xs uppercase tracking-wider">Total Shares</p>
