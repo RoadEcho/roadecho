@@ -65,11 +65,10 @@ export default function Home() {
   };
 
   const handleShare = async () => {
-    // Track share event in admin analytics
     try {
       await fetch('/api/analytics/share', { method: 'POST' });
     } catch (e) {
-      // Silently fail so user experience isn't interrupted
+      // Silently fail
     }
 
     const shareText = "Ever wish you could anonymously text a driver about their parking or send a cool note? Check out RoadEcho — the safe, anonymous way to message any vehicle license plate! 🚗💨 https://roadecho.vercel.app";
@@ -169,29 +168,10 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex justify-between items-center mb-6">
+        <div className="mb-6 text-center">
           <p className="text-slate-400 text-xs">
             Privacy-first plate-to-plate messaging with cryptographic hashing and AI pre-moderation.
           </p>
-          <div className="flex items-center space-x-3 ml-2">
-            <a href="/dashboard" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium whitespace-nowrap">
-              Plate Vault &rarr;
-            </a>
-          </div>
-        </div>
-
-        {/* Curiosity Hook Banner */}
-        <div className="mb-6 p-4 bg-gradient-to-r from-cyan-950/60 to-slate-900 border border-cyan-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-bold text-cyan-400">🚗 Own a vehicle?</h3>
-            <p className="text-xs text-slate-300 mt-0.5">Curious if another driver left a note for you? Check your plate in your secure vault.</p>
-          </div>
-          <a 
-            href="/dashboard" 
-            className="whitespace-nowrap px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition"
-          >
-            Check My Plate &rarr;
-          </a>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -308,6 +288,20 @@ export default function Home() {
             {status}
           </div>
         )}
+
+        {/* Curiosity Hook Banner (Moved under Send Message) */}
+        <div className="mt-6 p-4 bg-gradient-to-r from-cyan-950/60 to-slate-900 border border-cyan-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-bold text-cyan-400">🚗 Own a vehicle?</h3>
+            <p className="text-xs text-slate-300 mt-0.5">Curious if another driver left a note for you? Check your plate in your secure vault.</p>
+          </div>
+          <a 
+            href="/dashboard" 
+            className="whitespace-nowrap px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition"
+          >
+            Check My Plate &rarr;
+          </a>
+        </div>
       </div>
 
       {/* Viral Share Card */}
