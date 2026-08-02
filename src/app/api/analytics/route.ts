@@ -31,20 +31,22 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access restricted.' }, { status: 403 })
     }
 
-    // 3. Fetch records for messages, unlocks, and shares
-    const [messagesRes, unlocksRes, sharesRes] = await Promise.all([
+    // 3. Fetch records for messages, unlocks, shares, and active subscriptions
+    const [messagesRes, unlocksRes, sharesRes, subsRes] = await Promise.all([
       supabase.from('messages').select('license_plate, created_at'),
       supabase.from('user_access').select('created_at'),
-      supabase.from('share_events').select('created_at')
+      supabase.from('share_events').select('created_at'),
+      supabase.from('subscriptions').select('created_at', { count: 'exact', head: true }).eq('status', 'active')
     ])
 
-    if (messagesRes.error || unlocksRes.error || sharesRes.error) {
-      throw new Error(messagesRes.error?.message || unlocksRes.error?.message || sharesRes.error?.message)
+    if (messagesRes.error || unlocksRes.error || sharesRes.error || subsRes.error) {
+      throw new Error(messagesRes.error?.message || unlocksRes.error?.message || sharesRes.error?.message || subsRes.error?.message)
     }
 
     const messages = messagesRes.data || []
     const unlocks = unlocksRes.data || []
     const shares = sharesRes.data || []
+    const totalSubscribers = subsRes.count || 0
 
     // Calculate unique plates with messages
     const uniquePlatesCount = new Set(messages.map(m => m.license_plate).filter(Boolean)).size
@@ -82,6 +84,7 @@ export async function GET(request: Request) {
       totalMessages: messages.length,
       uniquePlatesCount,
       totalUnlocks: unlocks.length,
+      totalSubscribers,
       totalShares: shares.length,
       messagesBreakdown: groupStats(messages),
       unlocksBreakdown: groupStats(unlocks),
