@@ -188,6 +188,17 @@ export default function VaultDashboard() {
         </a>
       </div>
 
+      {/* Logo Display */}
+      <div className="flex justify-center mb-4">
+        <div className="w-56 h-32 overflow-hidden relative rounded-2xl border border-slate-800 shadow-xl flex items-center justify-center bg-slate-950">
+          <img 
+            src="/logo.PNG" 
+            alt="RoadEcho Logo" 
+            className="absolute w-72 max-w-none scale-110 translate-y-1 object-cover" 
+          />
+        </div>
+      </div>
+
       <h1 className="text-2xl font-bold mb-2">Your Plate Vault & History</h1>
       <p className="text-slate-400 text-sm mb-6">Claim up to 3 license plates and view your complete activity history.</p>
 
