@@ -67,7 +67,6 @@ export default function VaultDashboard() {
     setUserId(currentUserId)
 
     try {
-      // 1. Fetch vault messages, plates, and access status
       const res = await fetch('/api/vault', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -83,7 +82,6 @@ export default function VaultDashboard() {
         setHasAccess(data.hasAccess || false)
       }
 
-      // 2. Fetch stored passes and active pass expiration from vault
       const { data: vaultData } = await supabase
         .from('user_pass_vault')
         .select('available_passes, pass_expires_at')
@@ -95,7 +93,6 @@ export default function VaultDashboard() {
         setPassExpiresAt(vaultData.pass_expires_at || null)
       }
 
-      // 3. Fetch user sent submissions
       const subRes = await fetch('/api/user/submissions', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -200,6 +197,21 @@ export default function VaultDashboard() {
       if (!res.ok) {
         setError(data.error || 'Failed to claim plate.')
       } else {
+        // Trigger referral conversion check on claim if ref ID is present
+        const referrerId = localStorage.getItem('road_echo_ref')
+        if (referrerId && session.user.email) {
+          try {
+            await fetch('/api/referral/convert', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: session.user.email, referrerId }),
+            })
+            localStorage.removeItem('road_echo_ref')
+          } catch (refErr) {
+            console.error('Failed to log referral conversion on claim', refErr)
+          }
+        }
+
         setPlateInput('')
         fetchUserData()
       }
@@ -229,35 +241,25 @@ export default function VaultDashboard() {
 
   return (
     <div className="max-w-2xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10 mb-10">
-      
-      {/* Navigation Link Back to Message Sender Form */}
       <div className="mb-4">
         <a href="/" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium">
           &larr; Send a Secure Message
         </a>
       </div>
 
-      {/* Logo Display */}
       <div className="flex justify-center mb-4">
         <div className="w-56 h-32 overflow-hidden relative rounded-2xl border border-slate-800 shadow-xl flex items-center justify-center bg-slate-950">
-          <img 
-            src="/logo.PNG" 
-            alt="RoadEcho Logo" 
-            className="absolute w-72 max-w-none scale-110 translate-y-1 object-cover" 
-          />
+          <img src="/logo.PNG" alt="RoadEcho Logo" className="absolute w-72 max-w-none scale-110 translate-y-1 object-cover" />
         </div>
       </div>
 
       <h1 className="text-2xl font-bold mb-2">Your Plate Vault & History</h1>
       <p className="text-slate-400 text-sm mb-6">Claim up to 3 license plates and view your complete activity history.</p>
 
-      {/* Referral Vault & Stored Passes Section */}
       <div className="mb-8 p-5 bg-slate-950 border border-cyan-500/30 rounded-xl space-y-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h3 className="font-bold text-cyan-400 text-base">🎁 Referral Rewards Vault</h3>
-            <p className="text-xs text-slate-400">Earn stored 24-hour passes when 5 friends use your link or someone subscribes!</p>
-          </div>
+        <div>
+          <h3 className="font-bold text-cyan-400 text-base">🎁 Referral Rewards Vault</h3>
+          <p className="text-xs text-slate-400">Earn stored 24-hour passes when 5 friends use your link or someone subscribes!</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -281,7 +283,6 @@ export default function VaultDashboard() {
           Activate 24-Hour Pass From Vault
         </button>
 
-        {/* Unique Referral Link Share Box */}
         <div className="pt-2 border-t border-slate-900 space-y-2">
           <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Your Unique Referral Link</label>
           <div className="flex gap-2">
@@ -305,7 +306,6 @@ export default function VaultDashboard() {
         </div>
       </div>
 
-      {/* Upgrade / Checkout Section with Click-Wrap Consent */}
       {!hasAccess && !isPassActive && (
         <div className="mb-8 p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
@@ -331,7 +331,6 @@ export default function VaultDashboard() {
             </div>
           </div>
 
-          {/* Checkout Click-Wrap Checkbox */}
           <div className="flex items-start space-x-2 text-xs text-slate-400 pt-2 border-t border-slate-900">
             <input
               type="checkbox"
@@ -380,7 +379,6 @@ export default function VaultDashboard() {
         </button>
       </form>
 
-      {/* Claimed Plates Section */}
       <div className="space-y-4 mb-8">
         <h2 className="text-lg font-semibold text-slate-300">Claimed Plates</h2>
         {plates.length === 0 ? (
@@ -405,7 +403,6 @@ export default function VaultDashboard() {
         )}
       </div>
 
-      {/* Messages Received Section */}
       <div className="space-y-4 mb-8">
         <h2 className="text-lg font-semibold text-slate-300">Messages Received</h2>
         {messages.length === 0 ? (
@@ -450,7 +447,6 @@ export default function VaultDashboard() {
         )}
       </div>
 
-      {/* My Sent Submissions History Section */}
       <div className="space-y-4 mb-8">
         <h2 className="text-lg font-semibold text-slate-300">Your Sent Message History</h2>
         {submissions.length === 0 ? (
@@ -470,7 +466,6 @@ export default function VaultDashboard() {
         )}
       </div>
 
-      {/* Footer Legal & Policy Links */}
       <div className="border-t border-slate-800 pt-4 flex flex-wrap justify-center gap-4 text-xs text-slate-400">
         <a href="/faq" className="hover:text-cyan-400 transition-colors">FAQ</a>
         <span>&bull;</span>
