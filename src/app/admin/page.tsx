@@ -9,6 +9,7 @@ interface AnalyticsData {
   uniquePlatesCount: number
   totalUnlocks: number
   totalShares: number
+  totalReferrals: number
   messagesBreakdown: {
     daily: Record<string, number>
     weekly: Record<string, number>
@@ -177,8 +178,8 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-6xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10 mb-10">
-      <div className="flex flex-col gap-3 mb-6">
-        <div className="flex justify-end gap-2">
+      <div className="flex flex-col items-center gap-3 mb-6">
+        <div className="flex justify-center gap-2">
           <button onClick={checkAdminAndFetch} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition cursor-pointer">
             Refresh Data
           </button>
@@ -186,14 +187,14 @@ export default function AdminDashboard() {
             Sign Out
           </button>
         </div>
-        <h1 className="text-2xl font-bold text-cyan-400">🔒 RoadEcho Admin Command Center</h1>
+        <h1 className="text-2xl font-bold text-cyan-400 text-center">🔒 RoadEcho Admin Command Center</h1>
       </div>
 
       {error && <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">{error}</div>}
       {success && <div className="mb-4 p-3 bg-emerald-950/50 border border-emerald-800 rounded-lg text-emerald-300 text-sm">{success}</div>}
 
       {/* Overview Metrics Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-xs uppercase tracking-wider">Total Messages</p>
           <p className="text-3xl font-bold text-cyan-400 mt-1">{data?.totalMessages || 0}</p>
@@ -209,6 +210,10 @@ export default function AdminDashboard() {
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-xs uppercase tracking-wider">Total Shares</p>
           <p className="text-3xl font-bold text-teal-400 mt-1">{data?.totalShares || 0}</p>
+        </div>
+        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-xs uppercase tracking-wider">Total Referrals</p>
+          <p className="text-3xl font-bold text-pink-400 mt-1">{data?.totalReferrals || 0}</p>
         </div>
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-xs uppercase tracking-wider">Total Accounts</p>
