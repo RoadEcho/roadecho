@@ -33,6 +33,7 @@ export default function VaultDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [hasAccess, setHasAccess] = useState(false)
   const [availablePasses, setAvailablePasses] = useState(0)
+  const [referralCount, setReferralCount] = useState(0)
   const [passExpiresAt, setPassExpiresAt] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState<string>('')
   const [userId, setUserId] = useState<string | null>(null)
@@ -120,6 +121,15 @@ export default function VaultDashboard() {
         setAvailablePasses(vaultData.available_passes || 0)
         setPassExpiresAt(vaultData.pass_expires_at || null)
       }
+
+      // Fetch live referral count for this user
+      const { count: refCount } = await supabase
+        .from('referrals')
+        .select('*', { count: 'exact', head: true })
+        .eq('referrer_id', currentUserId)
+        .eq('status', 'converted')
+
+      setReferralCount(refCount || 0)
 
       const subRes = await fetch('/api/user/submissions', {
         headers: {
@@ -296,16 +306,20 @@ export default function VaultDashboard() {
           <p className="text-xs text-slate-400">Earn stored 24-hour passes when 5 friends use your link or someone subscribes!</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-2">
           <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 text-center">
             <p className="text-xl font-black text-cyan-400">{availablePasses}</p>
-            <p className="text-xs text-slate-400 mt-0.5">Stored Passes Ready</p>
+            <p className="text-xs text-slate-400 mt-0.5">Stored Passes</p>
           </div>
           <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 text-center">
-            <p className="text-xs font-bold text-emerald-400 mt-1">
-              {isPassActive ? timeLeft || 'Active' : 'No active pass'}
+            <p className="text-xl font-black text-cyan-400">{referralCount} <span className="text-xs text-slate-500 font-normal">/ 5</span></p>
+            <p className="text-xs text-slate-400 mt-0.5">Referrals</p>
+          </div>
+          <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 text-center">
+            <p className="text-xs font-bold text-emerald-400 mt-1 truncate">
+              {isPassActive ? timeLeft || 'Active' : 'Inactive'}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">Pass Countdown</p>
+            <p className="text-xs text-slate-400 mt-0.5">Pass Status</p>
           </div>
         </div>
 
