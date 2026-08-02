@@ -230,10 +230,12 @@ export default function AdminDashboard() {
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-xs uppercase tracking-wider">Total Messages</p>
           <p className="text-3xl font-bold text-cyan-400 mt-1">{data?.totalMessages || 0}</p>
+          <p className="text-[10px] text-slate-500 mt-1">All messages sent</p>
         </div>
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-xs uppercase tracking-wider">Plates Messaged</p>
           <p className="text-3xl font-bold text-blue-400 mt-1">{data?.uniquePlatesCount || 0}</p>
+          <p className="text-[10px] text-slate-500 mt-1">Unique license plates</p>
         </div>
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-xs uppercase tracking-wider">Total Unlocks</p>
