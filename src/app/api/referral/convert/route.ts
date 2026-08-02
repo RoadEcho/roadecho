@@ -33,7 +33,7 @@ export async function POST(request: Request) {
           .select('id')
           .eq('user_id', referrerId)
           .eq('milestone_type', '5_referrals')
-          .single()
+          .maybeSingle()
 
         if (!existingClaim) {
           // Lock the milestone claim to prevent duplicate rewards and enforce the cap
