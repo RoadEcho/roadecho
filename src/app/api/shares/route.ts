@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const { user_id } = body
 
     const { error } = await supabase
-      .from('share_events')
+      .from('shares') // Updated from share_events to shares
       .insert([{ user_id: user_id || null, created_at: new Date().toISOString() }])
 
     if (error) throw error
