@@ -20,14 +20,25 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized session' }, { status: 401 })
     }
 
-    // Fetch unlock records ordered by newest first
-    const { data: unlocks, error } = await supabase
+    // Try querying 'user_access' first
+    let { data: unlocks, error } = await supabase
       .from('user_access')
       .select('id, user_id, license_plate, created_at')
       .order('created_at', { ascending: false })
       .limit(50)
 
-    if (error) throw error
+    // Fallback to 'unlocks' table if user_access is empty or errors out
+    if (error || !unlocks || unlocks.length === 0) {
+      const altQuery = await supabase
+        .from('unlocks')
+        .select('id, user_id, license_plate, created_at')
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (!altQuery.error) {
+        unlocks = altQuery.data
+      }
+    }
 
     // Fetch auth users safely
     const { data: authData } = await supabase.auth.admin.listUsers()
@@ -41,8 +52,8 @@ export async function GET(request: Request) {
     const formattedUnlocks = (unlocks || []).map(u => ({
       id: u.id,
       email: emailMap.get(u.user_id) || 'Unknown User',
-      licensePlate: u.license_plate || 'N/A',
-      createdAt: u.created_at
+      licensePlate: u.license_plate || u.plate || 'N/A',
+      createdAt: u.created_at || u.timestamp
     }))
 
     return NextResponse.json({ unlocks: formattedUnlocks })
