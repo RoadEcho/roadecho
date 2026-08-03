@@ -227,129 +227,135 @@ export default function AdminDashboard() {
   if (error && !data) return <div className="p-10 text-red-400 text-center bg-slate-950 min-h-screen">Access Denied: {error}</div>
 
   return (
-    <div className="max-w-6xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10 mb-10">
-      <div className="flex flex-col items-center gap-3 mb-6">
-        <div className="flex justify-center gap-2">
-          <button onClick={checkAdminAndFetch} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition cursor-pointer">
+    <div className="max-w-5xl mx-auto p-4 sm:p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white my-8">
+      
+      {/* Header Controls */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-950/80 border border-slate-800 p-4 rounded-xl mb-6">
+        <h1 className="text-base sm:text-lg font-bold text-cyan-400 flex items-center gap-2">
+          🔒 RoadEcho Admin Command Center
+        </h1>
+        <div className="flex items-center gap-2">
+          <button onClick={checkAdminAndFetch} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer">
             Refresh Data
           </button>
-          <button onClick={async () => { await supabase.auth.signOut(); router.push('/admin/login'); }} className="px-4 py-2 bg-red-950/60 hover:bg-red-900/60 text-red-300 border border-red-800 rounded-lg text-sm transition cursor-pointer">
+          <button onClick={async () => { await supabase.auth.signOut(); router.push('/admin/login'); }} className="px-3 py-1.5 bg-red-950/70 hover:bg-red-900 text-red-300 border border-red-800 rounded-lg text-xs font-semibold transition cursor-pointer">
             Sign Out
           </button>
         </div>
-        <h1 className="text-2xl font-bold text-cyan-400 text-center">🔒 RoadEcho Admin Command Center</h1>
       </div>
 
-      {error && <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">{error}</div>}
-      {success && <div className="mb-4 p-3 bg-emerald-950/50 border border-emerald-800 rounded-lg text-emerald-300 text-sm">{success}</div>}
+      {error && <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-xs">{error}</div>}
+      {success && <div className="mb-4 p-3 bg-emerald-950/50 border border-emerald-800 rounded-lg text-emerald-300 text-xs">{success}</div>}
 
       {/* Overview Metrics Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
-        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-          <p className="text-slate-400 text-xs uppercase tracking-wider">Total Messages</p>
-          <p className="text-3xl font-bold text-cyan-400 mt-1">{data?.totalMessages || 0}</p>
-          <p className="text-[10px] text-slate-500 mt-1">All messages sent</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Messages</p>
+          <p className="text-2xl font-black text-cyan-400 mt-1">{data?.totalMessages || 0}</p>
         </div>
-        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-          <p className="text-slate-400 text-xs uppercase tracking-wider">Plates Messaged</p>
-          <p className="text-3xl font-bold text-blue-400 mt-1">{data?.uniquePlatesCount || 0}</p>
-          <p className="text-[10px] text-slate-500 mt-1">Unique license plates</p>
+        <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Plates Messaged</p>
+          <p className="text-2xl font-black text-blue-400 mt-1">{data?.uniquePlatesCount || 0}</p>
         </div>
-        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-          <p className="text-slate-400 text-xs uppercase tracking-wider">Total Unlocks</p>
-          <p className="text-3xl font-bold text-emerald-400 mt-1">{data?.totalUnlocks || 0}</p>
+        <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Unlocks</p>
+          <p className="text-2xl font-black text-emerald-400 mt-1">{data?.totalUnlocks || 0}</p>
         </div>
-        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-          <p className="text-slate-400 text-xs uppercase tracking-wider">Total Subscribers</p>
-          <p className="text-3xl font-bold text-cyan-300 mt-1">{data?.totalSubscribers || 0}</p>
+        <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Subscribers</p>
+          <p className="text-2xl font-black text-cyan-300 mt-1">{data?.totalSubscribers || 0}</p>
         </div>
-        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-          <p className="text-slate-400 text-xs uppercase tracking-wider">Total Shares</p>
-          <p className="text-3xl font-bold text-teal-400 mt-1">{data?.totalShares || 0}</p>
+        <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Shares</p>
+          <p className="text-2xl font-black text-teal-400 mt-1">{data?.totalShares || 0}</p>
         </div>
-        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-          <p className="text-slate-400 text-xs uppercase tracking-wider">Total Referrals</p>
-          <p className="text-3xl font-bold text-pink-400 mt-1">{data?.totalReferrals || 0}</p>
+        <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Referrals</p>
+          <p className="text-2xl font-black text-pink-400 mt-1">{data?.totalReferrals || 0}</p>
         </div>
-        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-          <p className="text-slate-400 text-xs uppercase tracking-wider">Total Accounts</p>
-          <p className="text-3xl font-bold text-purple-400 mt-1">{userStats?.totalUsers || 0}</p>
+        <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Accounts</p>
+          <p className="text-2xl font-black text-purple-400 mt-1">{userStats?.totalUsers || 0}</p>
         </div>
-        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-          <p className="text-slate-400 text-xs uppercase tracking-wider">Active (30 Days)</p>
-          <p className="text-3xl font-bold text-amber-400 mt-1">{userStats?.activeUsers || 0}</p>
+        <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
+          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Active (30 Days)</p>
+          <p className="text-2xl font-black text-amber-400 mt-1">{userStats?.activeUsers || 0}</p>
         </div>
       </div>
 
-      {/* Timeframe Switcher Tabs */}
-      <div className="grid grid-cols-2 sm:flex gap-2 mb-6 border-b border-slate-800 pb-4">
-        {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition cursor-pointer text-center ${
-              activeTab === tab ? 'bg-cyan-500 text-slate-950' : 'bg-slate-950 text-slate-400 hover:text-white'
-            }`}
-          >
-            {tab} Breakdown
-          </button>
-        ))}
-      </div>
-
-      {/* Messages, Unlocks & Shares Breakdowns */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-          <h2 className="text-lg font-semibold mb-4 text-slate-300 capitalize">Messages ({activeTab})</h2>
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-            {data?.messagesBreakdown[activeTab] && Object.keys(data.messagesBreakdown[activeTab]).length > 0 ? (
-              Object.entries(data.messagesBreakdown[activeTab]).map(([key, val]) => (
-                <div key={key} className="flex justify-between items-center p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-sm font-mono">
-                  <span className="text-slate-300">{key}</span>
-                  <span className="text-cyan-400 font-bold">{val} msgs</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-slate-500 text-sm italic">No data recorded for this period.</p>
-            )}
+      {/* Timeframe Switcher Tabs & Condensed Breakdowns */}
+      <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl mb-6 space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+          <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Activity Breakdowns</h2>
+          <div className="flex gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
+            {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-3 py-1 rounded-md font-semibold capitalize transition cursor-pointer ${
+                  activeTab === tab ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-          <h2 className="text-lg font-semibold mb-4 text-slate-300 capitalize">Unlocks ({activeTab})</h2>
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-            {data?.unlocksBreakdown[activeTab] && Object.keys(data.unlocksBreakdown[activeTab]).length > 0 ? (
-              Object.entries(data.unlocksBreakdown[activeTab]).map(([key, val]) => (
-                <div key={key} className="flex justify-between items-center p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-sm font-mono">
-                  <span className="text-slate-300">{key}</span>
-                  <span className="text-emerald-400 font-bold">{val} unlocks</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-slate-500 text-sm italic">No data recorded for this period.</p>
-            )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-lg space-y-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase">Messages ({activeTab})</p>
+            <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+              {data?.messagesBreakdown[activeTab] && Object.keys(data.messagesBreakdown[activeTab]).length > 0 ? (
+                Object.entries(data.messagesBreakdown[activeTab]).map(([key, val]) => (
+                  <div key={key} className="flex justify-between items-center text-xs font-mono">
+                    <span className="text-slate-300">{key}</span>
+                    <span className="text-cyan-400 font-bold">{val} msgs</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-500 italic">No records.</p>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-          <h2 className="text-lg font-semibold mb-4 text-slate-300 capitalize">Shares ({activeTab})</h2>
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-            {data?.sharesBreakdown[activeTab] && Object.keys(data.sharesBreakdown[activeTab]).length > 0 ? (
-              Object.entries(data.sharesBreakdown[activeTab]).map(([key, val]) => (
-                <div key={key} className="flex justify-between items-center p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-sm font-mono">
-                  <span className="text-slate-300">{key}</span>
-                  <span className="text-teal-400 font-bold">{val} shares</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-slate-500 text-sm italic">No data recorded for this period.</p>
-            )}
+          <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-lg space-y-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase">Unlocks ({activeTab})</p>
+            <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+              {data?.unlocksBreakdown[activeTab] && Object.keys(data.unlocksBreakdown[activeTab]).length > 0 ? (
+                Object.entries(data.unlocksBreakdown[activeTab]).map(([key, val]) => (
+                  <div key={key} className="flex justify-between items-center text-xs font-mono">
+                    <span className="text-slate-300">{key}</span>
+                    <span className="text-emerald-400 font-bold">{val} unlocks</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-500 italic">No records.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-lg space-y-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase">Shares ({activeTab})</p>
+            <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+              {data?.sharesBreakdown[activeTab] && Object.keys(data.sharesBreakdown[activeTab]).length > 0 ? (
+                Object.entries(data.sharesBreakdown[activeTab]).map(([key, val]) => (
+                  <div key={key} className="flex justify-between items-center text-xs font-mono">
+                    <span className="text-slate-300">{key}</span>
+                    <span className="text-teal-400 font-bold">{val} shares</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-500 italic">No records.</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Admin Team Management Section */}
-      <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl mb-8 space-y-4">
-        <h2 className="text-lg font-semibold text-slate-300">Manage Administrator Team</h2>
+      <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl mb-6 space-y-3">
+        <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Manage Administrator Team</h2>
         <p className="text-xs text-slate-400">Enter an email address to dispatch an automated password-setup invitation.</p>
         
         <form onSubmit={handleAddAdmin} className="flex flex-col sm:flex-row gap-2">
@@ -359,20 +365,20 @@ export default function AdminDashboard() {
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
             required
-            className="w-full sm:flex-1 px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500"
+            className="w-full sm:flex-1 px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-white text-xs focus:outline-none focus:border-cyan-500 font-mono"
           />
           <button
             type="submit"
-            className="w-full sm:w-auto px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition cursor-pointer whitespace-nowrap flex items-center justify-center"
+            className="w-full sm:w-auto px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition cursor-pointer whitespace-nowrap"
           >
             Send Admin Invite
           </button>
         </form>
 
-        <div className="space-y-2 pt-2 max-h-40 overflow-y-auto">
+        <div className="space-y-1.5 pt-1 max-h-36 overflow-y-auto">
           {admins.length > 0 ? (
             admins.map((adm) => (
-              <div key={adm.id} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs">
+              <div key={adm.id} className="flex items-center justify-between p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-xs">
                 <span className="font-mono text-cyan-300 truncate pr-2">{adm.email}</span>
                 <button
                   type="button"
@@ -384,118 +390,105 @@ export default function AdminDashboard() {
               </div>
             ))
           ) : (
-            <p className="text-slate-500 text-sm italic">No additional admins listed.</p>
+            <p className="text-slate-500 text-xs italic">No additional admins listed.</p>
           )}
         </div>
       </div>
 
-      {/* Message Senders Directory Section */}
-      <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl mb-8">
-        <h2 className="text-lg font-semibold mb-4 text-slate-300">Message Senders Directory</h2>
-        <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-          {senders.length > 0 ? (
-            senders.map((s, idx) => (
-              <div key={idx} className="flex justify-between items-center p-3 bg-slate-900 border border-slate-800 rounded-lg text-sm">
-                <div>
-                  <p className="font-medium text-white">{s.email}</p>
-                  <p className="text-xs text-slate-500">Total Sent: {s.messageCount} message{s.messageCount !== 1 ? 's' : ''}</p>
-                </div>
-                <div className="text-right text-xs text-slate-400 font-mono">
-                  Last Sent: {new Date(s.lastMessageAt).toLocaleDateString()}
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-slate-500 text-sm italic">No message senders recorded yet.</p>
-          )}
-        </div>
-      </div>
-
-      {/* Vault Unlocks Directory Section (Granular) */}
-      <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl mb-8">
-        <h2 className="text-lg font-semibold mb-4 text-slate-300">Vault Unlocks Directory</h2>
-        <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-          {unlocksList.length > 0 ? (
-            unlocksList.map((item) => (
-              <div key={item.id} className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-sm space-y-1.5">
-                <div className="flex justify-between items-start">
+      {/* Logs & Directories Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        
+        {/* Message Senders Directory */}
+        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+          <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Message Senders Directory</h2>
+          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+            {senders.length > 0 ? (
+              senders.map((s, idx) => (
+                <div key={idx} className="flex justify-between items-center p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs">
                   <div>
-                    <p className="font-medium text-white">{item.email}</p>
-                    <p className="text-xs text-cyan-400 font-mono mt-0.5">Plate: {item.licensePlate}</p>
+                    <p className="font-medium text-white">{s.email}</p>
+                    <p className="text-[11px] text-slate-500">Total Sent: {s.messageCount}</p>
                   </div>
-                  <div className="text-right">
-                    <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full ${
-                      item.isExpired 
-                        ? 'bg-red-950/80 text-red-400 border border-red-800' 
-                        : 'bg-emerald-950/80 text-emerald-400 border border-emerald-800'
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {new Date(s.lastMessageAt).toLocaleDateString()}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-slate-500 text-xs italic text-center py-4">No message senders recorded.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Vault Unlocks Log */}
+        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+          <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Vault Unlocks Directory</h2>
+          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+            {unlocksList.length > 0 ? (
+              unlocksList.map((item) => (
+                <div key={item.id} className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-1">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-white">{item.email}</p>
+                      <p className="text-[11px] text-cyan-400 font-mono">Plate: {item.licensePlate}</p>
+                    </div>
+                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                      item.isExpired ? 'bg-red-950 text-red-400 border border-red-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
                     }`}>
                       {item.timeLeft || item.status}
                     </span>
                   </div>
                 </div>
-
-                <div className="flex justify-between items-center text-[11px] text-slate-400 pt-1.5 border-t border-slate-800/60 font-mono">
-                  <span>Unlocked: {new Date(item.createdAt).toLocaleString()}</span>
-                  <span>Ref: {item.transactionRef || 'N/A'}</span>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-slate-500 text-sm italic">No vault unlocks recorded yet.</p>
-          )}
+              ))
+            ) : (
+              <p className="text-slate-500 text-xs italic text-center py-4">No vault unlocks recorded.</p>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Granular Shares Directory Section */}
-      <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl mb-8">
-        <h2 className="text-lg font-semibold mb-4 text-slate-300">Granular Shares Log</h2>
-        <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-          {sharesList.length > 0 ? (
-            sharesList.map((share) => (
-              <div key={share.id} className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-sm space-y-1.5">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium text-white">{share.email}</p>
-                    <p className="text-xs text-teal-400 font-mono mt-0.5">Plate: {share.licensePlate}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-teal-950/80 text-teal-300 border border-teal-800">
+        {/* Granular Shares Log */}
+        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+          <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Granular Shares Log</h2>
+          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+            {sharesList.length > 0 ? (
+              sharesList.map((share) => (
+                <div key={share.id} className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-1">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-white">{share.email}</p>
+                      <p className="text-[11px] text-teal-400 font-mono">Plate: {share.licensePlate}</p>
+                    </div>
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-teal-950 text-teal-300 border border-teal-800">
                       {share.platform}
                     </span>
                   </div>
                 </div>
-
-                <div className="flex justify-between items-center text-[11px] text-slate-400 pt-1.5 border-t border-slate-800/60 font-mono">
-                  <span>Shared: {new Date(share.createdAt).toLocaleString()}</span>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-slate-500 text-sm italic">No share logs recorded yet.</p>
-          )}
+              ))
+            ) : (
+              <p className="text-slate-500 text-xs italic text-center py-4">No share logs recorded.</p>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* User Directory Section */}
-      <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl">
-        <h2 className="text-lg font-semibold mb-4 text-slate-300">Registered User Directory</h2>
-        <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-          {userStats?.users && userStats.users.length > 0 ? (
-            userStats.users.map(u => (
-              <div key={u.id} className="flex justify-between items-center p-3 bg-slate-900 border border-slate-800 rounded-lg text-sm">
-                <div>
-                  <p className="font-medium text-white">{u.email}</p>
-                  <p className="text-xs text-slate-500">Joined: {new Date(u.createdAt).toLocaleDateString()}</p>
+        {/* Registered User Directory */}
+        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+          <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Registered User Directory</h2>
+          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+            {userStats?.users && userStats.users.length > 0 ? (
+              userStats.users.map(u => (
+                <div key={u.id} className="flex justify-between items-center p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs">
+                  <span className="font-medium text-white truncate max-w-[160px]">{u.email}</span>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    Joined: {new Date(u.createdAt).toLocaleDateString()}
+                  </span>
                 </div>
-                <div className="text-right text-xs text-slate-400 font-mono">
-                  Last Active: {u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString() : 'Never'}
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-slate-500 text-sm italic">No registered users found.</p>
-          )}
+              ))
+            ) : (
+              <p className="text-slate-500 text-xs italic text-center py-4">No registered users found.</p>
+            )}
+          </div>
         </div>
+
       </div>
     </div>
   )
