@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
+import { createClient } from '@/lib/supabase'
 
 interface Plate {
   id: string
@@ -48,6 +48,8 @@ export default function VaultDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [copiedRef, setCopiedRef] = useState(false)
 
+  const supabase = createClient()
+
   useEffect(() => {
     let isMounted = true
 
@@ -69,7 +71,10 @@ export default function VaultDashboard() {
         await fetchVaultData(session.access_token, currentUserId)
       } catch (err: any) {
         console.error('Session init error:', err)
-        if (isMounted) window.location.href = '/login'
+        if (isMounted) {
+          setError(err.message || 'Failed to initialize session.')
+          setLoading(false)
+        }
       }
     }
 
@@ -190,10 +195,10 @@ export default function VaultDashboard() {
         fetchVaultData(session.access_token, userId)
       } else {
         setError(data.error || 'Failed to activate pass.')
+        setLoading(false)
       }
     } catch (err) {
       setError('An error occurred while activating pass.')
-    } finally {
       setLoading(false)
     }
   }
