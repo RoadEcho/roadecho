@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 7. Generate a secure auto-login magic link for the sender's dashboard
+    // 7. Generate a secure server-authenticated auto-login link for the sender's dashboard
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://roadecho.vercel.app';
     let senderDashboardUrl = `${siteUrl}/dashboard`;
 
@@ -121,7 +121,13 @@ export async function POST(request: Request) {
       });
 
       if (!linkErr && linkData?.properties?.action_link) {
-        senderDashboardUrl = linkData.properties.action_link;
+        const parsedUrl = new URL(linkData.properties.action_link);
+        const tokenHash = parsedUrl.searchParams.get('token_hash');
+        const type = parsedUrl.searchParams.get('type') || 'magiclink';
+        
+        if (tokenHash) {
+          senderDashboardUrl = `${siteUrl}/api/auth/token?token_hash=${tokenHash}&type=${type}`;
+        }
       }
     } catch (authErr) {
       console.error('Failed to generate auto-login link:', authErr);
