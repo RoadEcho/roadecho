@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase'
+import { supabase } from '../../lib/supabase'
 
 interface Plate {
   id: string
@@ -47,8 +47,6 @@ export default function VaultDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copiedRef, setCopiedRef] = useState(false)
-
-  const supabase = createClient()
 
   useEffect(() => {
     let isMounted = true
