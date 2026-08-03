@@ -20,7 +20,6 @@ export async function GET(request: NextRequest) {
   if (token_hash || code) {
     const cookieStore = await cookies()
     
-    // Use createServerClient with the ANON key and proper cookie handling
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -44,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     let error = null
 
-    // 1. Verify via token_hash if present
+    // 1. Verify via token_hash if present (Cross-browser / mobile app resilient)
     if (token_hash && type) {
       const res = await supabase.auth.verifyOtp({
         type,
