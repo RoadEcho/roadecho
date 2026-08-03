@@ -1,14 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Intercept the magic link redirect code and exchange it for a session
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search)
+    const code = queryParams.get('code')
+
+    if (code) {
+      setLoading(true)
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (!error) {
+          router.push('/dashboard')
+        } else {
+          setError(error.message)
+          setLoading(false)
+        }
+      })
+    }
+  }, [router])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -24,7 +44,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: `${window.location.origin}/login`,
       },
     })
 
@@ -106,7 +126,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg shadow-lg transition-colors cursor-pointer disabled:opacity-50"
             >
-              {loading ? 'Sending Magic Link...' : 'Send Magic Link'}
+              {loading ? 'Processing...' : 'Send Magic Link'}
             </button>
           </form>
         )}
