@@ -66,6 +66,14 @@ interface UnlockRecord {
   transactionRef: string
 }
 
+interface ShareRecord {
+  id: string
+  email: string
+  licensePlate: string
+  platform: string
+  createdAt: string
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const [data, setData] = useState<AnalyticsData | null>(null)
@@ -73,6 +81,7 @@ export default function AdminDashboard() {
   const [admins, setAdmins] = useState<AdminUser[]>([])
   const [senders, setSenders] = useState<SenderUser[]>([])
   const [unlocksList, setUnlocksList] = useState<UnlockRecord[]>([])
+  const [sharesList, setSharesList] = useState<ShareRecord[]>([])
   const [newEmail, setNewEmail] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -107,18 +116,14 @@ export default function AdminDashboard() {
       }
 
       const res = await fetch('/api/analytics', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to load analytics')
       setData(json)
 
       const userRes = await fetch('/api/admin/users', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
       })
       const userJson = await userRes.json()
       if (userRes.ok) {
@@ -150,6 +155,14 @@ export default function AdminDashboard() {
       if (unlocksRes.ok) {
         const unlockData = await unlocksRes.json()
         setUnlocksList(unlockData.unlocks || [])
+      }
+
+      const sharesRes = await fetch('/api/shares', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      })
+      if (sharesRes.ok) {
+        const shareData = await sharesRes.json()
+        setSharesList(shareData.shares || [])
       }
     } catch (err: any) {
       setError(err.message)
@@ -398,7 +411,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Vault Unlocks Directory Section (Enhanced) */}
+      {/* Vault Unlocks Directory Section (Granular) */}
       <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl mb-8">
         <h2 className="text-lg font-semibold mb-4 text-slate-300">Vault Unlocks Directory</h2>
         <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
@@ -429,6 +442,36 @@ export default function AdminDashboard() {
             ))
           ) : (
             <p className="text-slate-500 text-sm italic">No vault unlocks recorded yet.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Granular Shares Directory Section */}
+      <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl mb-8">
+        <h2 className="text-lg font-semibold mb-4 text-slate-300">Granular Shares Log</h2>
+        <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+          {sharesList.length > 0 ? (
+            sharesList.map((share) => (
+              <div key={share.id} className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-sm space-y-1.5">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium text-white">{share.email}</p>
+                    <p className="text-xs text-teal-400 font-mono mt-0.5">Plate: {share.licensePlate}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-teal-950/80 text-teal-300 border border-teal-800">
+                      {share.platform}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center text-[11px] text-slate-400 pt-1.5 border-t border-slate-800/60 font-mono">
+                  <span>Shared: {new Date(share.createdAt).toLocaleString()}</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-slate-500 text-sm italic">No share logs recorded yet.</p>
           )}
         </div>
       </div>
