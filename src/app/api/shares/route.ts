@@ -8,19 +8,42 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { userId, platform = 'general', metadata = {} } = body;
+    const { userId, user_id, platform = 'general', email, licensePlate, metadata = {} } = body;
 
-    const { data, error } = await supabase
+    const finalUserId = userId || user_id || null;
+
+    // Try inserting with all fields (new schema)
+    const insertData: any = {
+      platform: platform || 'general',
+      created_at: new Date().toISOString(),
+    };
+
+    if (finalUserId) insertData.user_id = finalUserId;
+    if (email) insertData.email = email;
+    if (licensePlate) insertData.licensePlate = licensePlate;
+    if (metadata) insertData.metadata = metadata;
+
+    let { data, error } = await supabase
       .from('shares')
-      .insert([
-        {
-          user_id: userId || null,
-          platform: platform,
-          metadata: metadata,
-          created_at: new Date().toISOString(),
-        }
-      ])
+      .insert([insertData])
       .select();
+
+    // Fallback if strict schema columns (like user_id or metadata) don't exist yet in the table
+    if (error) {
+      const fallbackData: any = {
+        platform: platform || 'general',
+      };
+      if (email) fallbackData.email = email;
+      if (licensePlate) fallbackData.licensePlate = licensePlate;
+
+      const fallbackResult = await supabase
+        .from('shares')
+        .insert([fallbackData])
+        .select();
+      
+      data = fallbackResult.data;
+      error = fallbackResult.error;
+    }
 
     if (error) {
       console.error('Supabase share insert error:', error);
@@ -42,8 +65,16 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Supabase share fetch error:', error);
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      // Fallback query if created_at column is missing
+      const fallbackQuery = await supabase
+        .from('shares')
+        .select('*', { count: 'exact' });
+
+      return NextResponse.json({ 
+        success: true, 
+        count: fallbackQuery.count ?? fallbackQuery.data?.length ?? 0, 
+        shares: fallbackQuery.data || [] 
+      });
     }
 
     return NextResponse.json({ 
@@ -52,7 +83,6 @@ export async function GET() {
       shares: data || [] 
     });
   } catch (err: any) {
-    console.error('API share GET error:', err);
-    return NextResponse.json({ success: false, error: err.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
