@@ -133,13 +133,13 @@ export default function Home() {
     }
 
     const refUrl = userId ? `https://roadecho.vercel.app?ref=${userId}` : 'https://roadecho.vercel.app';
-    const shareText = `Ever wanted to drop a parking tip or a great compliment to a driver? Check out RoadEcho — the safe, anonymous way to message any vehicle license plate! 🚗💨 ${refUrl}`;
+    const shareText = `Check out RoadEcho — the safe, anonymous way to message any vehicle license plate! 🚗💨\n\n${refUrl}`;
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'RoadEcho - Secure Plate Messaging',
-          text: 'Check out RoadEcho — the safe, anonymous way to message any vehicle license plate!',
+          text: shareText,
           url: refUrl,
         });
       } catch (err) {
