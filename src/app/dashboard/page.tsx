@@ -49,14 +49,44 @@ export default function VaultDashboard() {
   const [copiedRef, setCopiedRef] = useState(false)
 
   useEffect(() => {
-    fetchUserData()
+    let isMounted = true
+
+    async function initSessionAndData() {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (!isMounted) return
+
+        if (sessionError || !session) {
+          window.location.href = '/login'
+          return
+        }
+
+        const currentUserId = session.user.id
+        setUserId(currentUserId)
+        setUserEmail(session.user.email || null)
+
+        await fetchVaultData(session.access_token, currentUserId)
+      } catch (err: any) {
+        console.error('Session init error:', err)
+        if (isMounted) window.location.href = '/login'
+      }
+    }
+
+    initSessionAndData()
 
     const queryParams = new URLSearchParams(window.location.search)
     if (queryParams.get('success') === 'true') {
       const timer = setTimeout(() => {
-        fetchUserData()
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session) fetchVaultData(session.access_token, session.user.id)
+        })
       }, 2500)
       return () => clearTimeout(timer)
+    }
+
+    return () => {
+      isMounted = false
     }
   }, [])
 
@@ -71,7 +101,9 @@ export default function VaultDashboard() {
 
       if (difference <= 0) {
         setTimeLeft('Expired')
-        fetchUserData()
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session) fetchVaultData(session.access_token, session.user.id)
+        })
       } else {
         const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
         const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60))
@@ -85,22 +117,12 @@ export default function VaultDashboard() {
     return () => clearInterval(interval)
   }, [passExpiresAt])
 
-  async function fetchUserData() {
+  async function fetchVaultData(accessToken: string, currentUserId: string) {
     setLoading(true)
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      window.location.href = '/login'
-      return
-    }
-
-    const currentUserId = session.user.id
-    setUserId(currentUserId)
-    setUserEmail(session.user.email || null)
-
     try {
       const res = await fetch('/api/vault', {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${accessToken}`
         }
       })
       const data = await res.json()
@@ -124,7 +146,6 @@ export default function VaultDashboard() {
         setPassExpiresAt(vaultData.pass_expires_at || null)
       }
 
-      // Fetch live referral count for this user
       const { count: refCount } = await supabase
         .from('referrals')
         .select('*', { count: 'exact', head: true })
@@ -135,7 +156,7 @@ export default function VaultDashboard() {
 
       const subRes = await fetch('/api/user/submissions', {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${accessToken}`
         }
       })
       const subData = await subRes.json()
@@ -144,9 +165,9 @@ export default function VaultDashboard() {
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load vault data.')
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   const handleActivatePass = async () => {
@@ -154,6 +175,9 @@ export default function VaultDashboard() {
     setLoading(true)
     setError(null)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
       const res = await fetch('/api/vault/activate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -163,14 +187,15 @@ export default function VaultDashboard() {
       if (res.ok) {
         setAvailablePasses((prev) => Math.max(0, prev - 1))
         setPassExpiresAt(data.pass_expires_at)
-        fetchUserData()
+        fetchVaultData(session.access_token, userId)
       } else {
         setError(data.error || 'Failed to activate pass.')
       }
     } catch (err) {
       setError('An error occurred while activating pass.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const handleCheckout = async (type: 'pass' | 'subscription') => {
@@ -252,7 +277,7 @@ export default function VaultDashboard() {
         }
 
         setPlateInput('')
-        fetchUserData()
+        fetchVaultData(session.access_token, session.user.id)
       }
     } catch (err: any) {
       setError(err.message || 'Failed to claim plate.')
@@ -261,6 +286,9 @@ export default function VaultDashboard() {
 
   async function handleReleasePlate(plateId: string) {
     setError(null)
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+
     const { error } = await supabase
       .from('user_plates')
       .delete()
@@ -269,14 +297,23 @@ export default function VaultDashboard() {
     if (error) {
       setError(error.message)
     } else {
-      fetchUserData()
+      fetchVaultData(session.access_token, session.user.id)
     }
   }
 
   const referralLink = userId ? `https://roadecho.vercel.app/?ref=${userId}` : ''
   const isPassActive = passExpiresAt && new Date(passExpiresAt) > new Date()
 
-  if (loading) return <div className="p-6 text-white text-center mt-20">Loading vault...</div>
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-slate-950 text-white">
+        <div className="text-center space-y-4">
+          <div className="text-xl font-bold text-cyan-400">Loading vault...</div>
+          <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white mt-10 mb-10">
