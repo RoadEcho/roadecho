@@ -25,6 +25,11 @@ export default function TermsOfService() {
           <p>
             Users may earn stored 24-hour access passes through our referral program by sharing their unique referral link. Stored vault passes are non-transferable, hold no cash value, and cannot be redeemed for fiat currency or refunds. Self-referrals, automated script signups, and fraudulent conversion padding will result in immediate forfeiture of stored vault passes and permanent account suspension. RoadEcho reserves the right to alter, suspend, or terminate the referral reward structure at any time without notice.
           </p>
+
+          <h2 className="text-base font-semibold text-white pt-2">5. Intellectual Property & Proprietary Rights</h2>
+          <p>
+            All source code, database schemas, cryptographic hashing algorithms, server-side environment logic, user interfaces, text, graphics, logos, and software architecture comprising RoadEcho are the exclusive intellectual property of the business entity and are protected under international copyright, trade secret, trademark, and other intellectual property laws. Users and third parties are strictly prohibited from copying, modifying, adapting, distributing, decompiling, reverse engineering, scraping, or attempting to extract the proprietary source code, system blueprints, or database structures of the platform. Any unauthorized reproduction or extraction constitutes an immediate material breach of these Terms and will be prosecuted to the fullest extent of the law.
+          </p>
         </div>
 
         <div className="mt-8 pt-4 border-t border-slate-800 text-center">
