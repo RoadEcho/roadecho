@@ -1,89 +1,94 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '../../../lib/supabase'
+import { useEffect, useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { EmailOtpType } from '@supabase/supabase-js'
 
-export default function AuthConfirmPage() {
+function AuthConfirmContent() {
   const router = useRouter()
-  const [status, setStatus] = useState('Verifying your secure login link...')
+  const searchParams = useSearchParams()
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function handleAuthConfirm() {
       try {
-        const searchParams = new URLSearchParams(window.location.search)
+        const token_hash = searchParams.get('token_hash')
+        const type = searchParams.get('type') as EmailOtpType | null
+        const next = searchParams.get('next') ?? '/dashboard'
+
+        if (token_hash && type) {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash,
+            type,
+          })
+
+          if (error) throw error
+
+          router.push(next)
+          return
+        }
+
         const code = searchParams.get('code')
-        const tokenHash = searchParams.get('token_hash') || searchParams.get('token')
-        const type = searchParams.get('type') as any
-
-        // Check hash fragment (e.g. #access_token=...&refresh_token=...)
-        const hash = window.location.hash
-        if (hash) {
-          const hashParams = new URLSearchParams(hash.replace('#', ''))
-          const accessToken = hashParams.get('access_token')
-          const refreshToken = hashParams.get('refresh_token')
-
-          if (accessToken && refreshToken) {
-            const { error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            })
-            if (error) throw error
-            router.replace('/dashboard')
-            return
-          }
-        }
-
-        // Handle Token Hash / PKCE code passed via token or token_hash query params
-        if (tokenHash) {
-          if (tokenHash.startsWith('pkce_')) {
-            const { error } = await supabase.auth.exchangeCodeForSession(tokenHash)
-            if (error) throw error
-            router.replace('/dashboard')
-            return
-          } else {
-            const { error } = await supabase.auth.verifyOtp({
-              type: type || 'magiclink',
-              token_hash: tokenHash,
-            })
-            if (error) throw error
-            router.replace('/dashboard')
-            return
-          }
-        }
-
-        // Handle standard PKCE authorization code parameter
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code)
           if (error) throw error
-          router.replace('/dashboard')
+          router.push(next)
           return
         }
 
-        // Fallback: Check if session already exists
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          router.replace('/dashboard')
-          return
-        }
-
-        throw new Error('No authentication parameters found.')
+        throw new Error('Invalid authentication link or missing parameters.')
       } catch (err: any) {
         console.error('Auth confirmation error:', err)
-        router.replace('/login?error=' + encodeURIComponent(err.message || 'Unable to verify login link. Please request a new link.'))
+        setErrorMsg(err.message || 'Authentication failed. Please request a new magic link.')
+        setLoading(false)
       }
     }
 
     handleAuthConfirm()
-  }, [router])
+  }, [router, searchParams])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-slate-950 text-white">
+        <div className="text-center space-y-4">
+          <div className="text-xl font-bold text-cyan-400">Verifying your secure link...</div>
+          <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-slate-950 text-white">
-      <div className="w-full max-w-md p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-center space-y-4">
-        <h1 className="text-xl font-bold text-cyan-400">RoadEcho Authentication</h1>
-        <p className="text-sm text-slate-300">{status}</p>
-        <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl text-center space-y-4">
+        <h1 className="text-xl font-bold text-red-400">Authentication Error</h1>
+        <p className="text-sm text-slate-300">{errorMsg}</p>
+        <div className="pt-4">
+          <a
+            href="/login"
+            className="inline-block px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg transition text-xs"
+          >
+            Return to Login
+          </a>
+        </div>
       </div>
     </div>
+  )
+}
+
+export default function AuthConfirmPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-slate-950 text-white">
+        <div className="text-center space-y-4">
+          <div className="text-xl font-bold text-cyan-400">Loading...</div>
+          <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </div>
+      </div>
+    }>
+      <AuthConfirmContent />
+    </Suspense>
   )
 }
