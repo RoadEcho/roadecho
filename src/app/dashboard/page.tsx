@@ -51,45 +51,50 @@ export default function VaultDashboard() {
   useEffect(() => {
     let isMounted = true
 
+    // Absolute fail-safe: forces loading to stop after 6 seconds no matter what
+    const hardTimeout = setTimeout(() => {
+      if (isMounted && loading) {
+        setLoading(false)
+        setError('Loading took too long. Please tap Refresh below.')
+      }
+    }, 6000)
+
     async function initSessionAndData() {
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
+        // Race getSession against a 4s timeout to prevent mobile storage hangs
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session timeout')), 4000)
+        )
+
+        const res: any = await Promise.race([sessionPromise, timeoutPromise])
+        const session = res?.data?.session
+
         if (!isMounted) return
 
-        if (sessionError || !session) {
+        if (!session) {
           window.location.href = '/login'
           return
         }
 
-        const currentUserId = session.user.id
-        setUserId(currentUserId)
+        setUserId(session.user.id)
         setUserEmail(session.user.email || null)
 
-        await fetchVaultData(session.access_token, currentUserId)
+        await fetchVaultData(session.access_token, session.user.id)
       } catch (err: any) {
-        console.error('Session init error:', err)
+        console.error('Init error:', err)
         if (isMounted) {
-          setError(err.message || 'Failed to initialize session.')
-          setLoading(false)
+          // If session storage hangs, fallback to checking local storage token if available or redirect
+          window.location.href = '/login'
         }
       }
     }
 
     initSessionAndData()
 
-    const queryParams = new URLSearchParams(window.location.search)
-    if (queryParams.get('success') === 'true') {
-      const timer = setTimeout(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (session) fetchVaultData(session.access_token, session.user.id)
-        })
-      }, 2500)
-      return () => clearTimeout(timer)
-    }
-
     return () => {
       isMounted = false
+      clearTimeout(hardTimeout)
     }
   }, [])
 
@@ -104,9 +109,6 @@ export default function VaultDashboard() {
 
       if (difference <= 0) {
         setTimeLeft('Expired')
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (session) fetchVaultData(session.access_token, session.user.id)
-        })
       } else {
         const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
         const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60))
@@ -121,51 +123,66 @@ export default function VaultDashboard() {
   }, [passExpiresAt])
 
   async function fetchVaultData(accessToken: string, currentUserId: string) {
-    setLoading(true)
     try {
-      const res = await fetch('/api/vault', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      })
-      const data = await res.json()
+      // 1. Fetch main vault data via API route
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
 
-      if (!res.ok) {
-        setError(data.error || 'Failed to load vault data.')
-      } else {
+      const res = await fetch('/api/vault', {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
+
+      const data = await res.json()
+      if (res.ok) {
         setPlates(data.plates || [])
         setMessages(data.messages || [])
         setHasAccess(data.hasAccess || false)
+      } else {
+        setError(data.error || 'Failed to load vault data.')
       }
 
-      const { data: vaultData } = await supabase
-        .from('user_pass_vault')
-        .select('available_passes, pass_expires_at')
-        .eq('user_id', currentUserId)
-        .single()
+      // 2. Safely fetch secondary data with independent try/catch
+      try {
+        const { data: vaultData } = await supabase
+          .from('user_pass_vault')
+          .select('available_passes, pass_expires_at')
+          .eq('user_id', currentUserId)
+          .maybeSingle()
 
-      if (vaultData) {
-        setAvailablePasses(vaultData.available_passes || 0)
-        setPassExpiresAt(vaultData.pass_expires_at || null)
-      }
-
-      const { count: refCount } = await supabase
-        .from('referrals')
-        .select('*', { count: 'exact', head: true })
-        .eq('referrer_id', currentUserId)
-        .eq('status', 'converted')
-
-      setReferralCount(refCount || 0)
-
-      const subRes = await fetch('/api/user/submissions', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
+        if (vaultData) {
+          setAvailablePasses(vaultData.available_passes || 0)
+          setPassExpiresAt(vaultData.pass_expires_at || null)
         }
-      })
-      const subData = await subRes.json()
-      if (subRes.ok) {
-        setSubmissions(subData.submissions || [])
+      } catch (e) {
+        console.error('Vault pass fetch warning:', e)
       }
+
+      try {
+        const { count: refCount } = await supabase
+          .from('referrals')
+          .select('*', { count: 'exact', head: true })
+          .eq('referrer_id', currentUserId)
+          .eq('status', 'converted')
+
+        setReferralCount(refCount || 0)
+      } catch (e) {
+        console.error('Referral count fetch warning:', e)
+      }
+
+      try {
+        const subRes = await fetch('/api/user/submissions', {
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        })
+        const subData = await subRes.json()
+        if (subRes.ok) {
+          setSubmissions(subData.submissions || [])
+        }
+      } catch (e) {
+        console.error('Submissions fetch warning:', e)
+      }
+
     } catch (err: any) {
       setError(err.message || 'Failed to load vault data.')
     } finally {
@@ -313,6 +330,12 @@ export default function VaultDashboard() {
         <div className="text-center space-y-4">
           <div className="text-xl font-bold text-cyan-400">Loading vault...</div>
           <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded-lg transition cursor-pointer"
+          >
+            Taking too long? Tap to Refresh
+          </button>
         </div>
       </div>
     )
