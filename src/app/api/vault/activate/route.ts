@@ -61,18 +61,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Conflict detected, please try again.' }, { status: 409 })
     }
 
-    // 5. Log unlock event for admin analytics metrics
+    // 5. Log unlock event for admin analytics metrics & directory view
     try {
       await supabaseAdmin.from('unlocks').insert({
         user_id: userId,
+        plate: 'Vault Pass Activation',
+        status: 'Active',
         type: 'stored_pass_activation',
-        created_at: now.toISOString()
+        created_at: now.toISOString(),
+        expires_at: newExpiry
       })
     } catch (analyticsErr) {
       console.error('Failed to log admin unlock analytics:', analyticsErr)
     }
 
-    // 6. Return updated pass count so frontend state updates from 2 to 1 instantly
+    // 6. Return updated pass count so frontend state updates instantly
     return NextResponse.json({
       success: true,
       available_passes: updatedVault.available_passes,
