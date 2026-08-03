@@ -19,10 +19,22 @@ const COUNTRIES = [
   'Other'
 ];
 
+const US_STATES = [
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+];
+
+const CANADIAN_PROVINCES = [
+  'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'
+];
+
 export default function Home() {
   const [plate, setPlate] = useState('');
   const [country, setCountry] = useState('USA');
-  const [region, setRegion] = useState('');
+  const [region, setRegion] = useState('DE');
   const [senderEmail, setSenderEmail] = useState('');
   const [message, setMessage] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -39,6 +51,17 @@ export default function Home() {
       localStorage.setItem('road_echo_ref', refId);
     }
   }, []);
+
+  const handleCountryChange = (newCountry: string) => {
+    setCountry(newCountry);
+    if (newCountry === 'USA') {
+      setRegion('DE');
+    } else if (newCountry === 'Canada') {
+      setRegion('ON');
+    } else {
+      setRegion('');
+    }
+  };
 
   const handleVoiceInput = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -59,7 +82,7 @@ export default function Home() {
     recognition.onresult = (event: any) => {
       let transcript = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
-        transcript += event.results[0][i].transcript; // Fixed index syntax safety
+        transcript += event.results[0][i].transcript;
       }
       setMessage(transcript);
 
@@ -99,7 +122,6 @@ export default function Home() {
       // ignore
     }
 
-    // Log the share event to the backend so admin panel tracks it
     try {
       await fetch('/api/shares', {
         method: 'POST',
@@ -160,7 +182,6 @@ export default function Home() {
     }
 
     try {
-      // 1. Send the secure message
       const res = await fetch('/api/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -178,7 +199,6 @@ export default function Home() {
 
       const data = await res.json();
       if (res.ok) {
-        // 2. Check if there's a stored referral ID and trigger conversion credit!
         const referrerId = localStorage.getItem('road_echo_ref');
         if (referrerId && senderEmail) {
           try {
@@ -195,7 +215,7 @@ export default function Home() {
 
         setStatus('Secure message sent successfully!');
         setPlate('');
-        setRegion('');
+        setRegion('DE');
         setSenderEmail('');
         setMessage('');
         setAgreedToTerms(false);
@@ -213,7 +233,6 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-slate-950 text-white">
       <div className="w-full max-w-md p-8 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md">
         
-        {/* Full Logo Display with Watermark Cropped */}
         <div className="flex justify-center mb-4">
           <div className="w-56 h-32 overflow-hidden relative rounded-2xl border border-slate-800 shadow-xl flex items-center justify-center bg-slate-950">
             <img 
@@ -252,7 +271,7 @@ export default function Home() {
               </label>
               <select
                 value={country}
-                onChange={(e) => setCountry(e.target.value)}
+                onChange={(e) => handleCountryChange(e.target.value)}
                 className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors cursor-pointer"
               >
                 {COUNTRIES.map((c) => (
@@ -266,14 +285,40 @@ export default function Home() {
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
                 State / Region
               </label>
-              <input
-                type="text"
-                value={region}
-                onChange={(e) => setRegion(e.target.value.toUpperCase())}
-                placeholder="CA, ON, TOKYO..."
-                required
-                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase font-mono"
-              />
+              {country === 'USA' ? (
+                <select
+                  value={region}
+                  onChange={(e) => setRegion(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors cursor-pointer font-mono uppercase"
+                >
+                  {US_STATES.map((st) => (
+                    <option key={st} value={st} className="bg-slate-950 text-white">
+                      {st}
+                    </option>
+                  ))}
+                </select>
+              ) : country === 'Canada' ? (
+                <select
+                  value={region}
+                  onChange={(e) => setRegion(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors cursor-pointer font-mono uppercase"
+                >
+                  {CANADIAN_PROVINCES.map((pr) => (
+                    <option key={pr} value={pr} className="bg-slate-950 text-white">
+                      {pr}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={region}
+                  onChange={(e) => setRegion(e.target.value.toUpperCase())}
+                  placeholder="TOKYO, BAVARIA..."
+                  required
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase font-mono"
+                />
+              )}
             </div>
           </div>
 
@@ -316,7 +361,6 @@ export default function Home() {
             />
           </div>
 
-          {/* Legal Click-Agreement */}
           <div className="flex items-start space-x-2 text-xs text-slate-400 pt-1">
             <input
               type="checkbox"
@@ -348,7 +392,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Curiosity Hook Banner */}
         <div className="mt-6 p-4 bg-gradient-to-r from-cyan-950/60 to-slate-900 border border-cyan-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <h3 className="text-sm font-bold text-cyan-400">🚗 Own a vehicle?</h3>
@@ -363,7 +406,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Viral Share Card */}
       <div className="w-full max-w-md mx-auto mt-6 p-6 bg-slate-900 border border-cyan-500/30 rounded-2xl shadow-xl text-center">
         <div className="inline-block p-2 bg-cyan-500/10 text-cyan-400 rounded-full mb-3 text-lg">
           🚗💨
@@ -389,7 +431,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* Footer Navigation Link Outside Main Card */}
       <footer className="mt-6 text-center text-xs text-slate-500 space-x-4">
         <a href="/faq" className="hover:text-cyan-400 transition-colors">FAQ</a>
         <span>•</span>
