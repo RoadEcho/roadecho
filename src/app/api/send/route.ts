@@ -98,7 +98,6 @@ export async function POST(request: Request) {
       .from('user_plates')
       .select('user_id')
       .eq('plate_number', plateHash)
-      .eq('state', cleanState)
       .maybeSingle();
 
     if (plateOwnerData?.user_id) {
@@ -108,7 +107,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 7. Send Emails via Resend
+    // 7. Send Emails via Resend (Admin, Plate Owner, and Sender Confirmation)
     const adminEmail = process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com';
     const dashboardUrl = 'https://roadecho.vercel.app/dashboard';
     const adminDashboardUrl = 'https://roadecho.vercel.app/admin';
