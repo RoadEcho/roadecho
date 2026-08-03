@@ -68,10 +68,12 @@ interface UnlockRecord {
 
 interface ShareRecord {
   id: string
-  email: string
-  licensePlate: string
+  user_id: string | null
+  email?: string
+  licensePlate?: string
   platform: string
-  createdAt: string
+  created_at: string
+  metadata?: any
 }
 
 export default function AdminDashboard() {
@@ -163,6 +165,10 @@ export default function AdminDashboard() {
       if (sharesRes.ok) {
         const shareData = await sharesRes.json()
         setSharesList(shareData.shares || [])
+        // Ensure totalShares reflects the accurate live count if provided
+        if (shareData.count !== undefined && data) {
+          setData(prev => prev ? { ...prev, totalShares: shareData.count } : prev)
+        }
       }
     } catch (err: any) {
       setError(err.message)
@@ -267,7 +273,7 @@ export default function AdminDashboard() {
         </div>
         <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Shares</p>
-          <p className="text-2xl font-black text-teal-400 mt-1">{data?.totalShares || 0}</p>
+          <p className="text-2xl font-black text-teal-400 mt-1">{sharesList.length > 0 ? sharesList.length : (data?.totalShares || 0)}</p>
         </div>
         <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Referrals</p>
@@ -452,15 +458,21 @@ export default function AdminDashboard() {
           <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
             {sharesList.length > 0 ? (
               sharesList.map((share) => (
-                <div key={share.id} className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-1">
+                <div key={share.id} className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-2">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-medium text-white">{share.email}</p>
-                      <p className="text-[11px] text-teal-400 font-mono">Plate: {share.licensePlate}</p>
+                      <p className="font-mono text-[11px] text-slate-300">ID: {share.id.slice(0, 8)}...</p>
+                      <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                        User: {share.user_id ? `${share.user_id.slice(0, 8)}...` : 'Anonymous'}
+                      </p>
                     </div>
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-teal-950 text-teal-300 border border-teal-800">
-                      {share.platform}
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-teal-950 text-teal-300 border border-teal-800 uppercase tracking-wide">
+                      {share.platform || 'general'}
                     </span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-800/80 flex justify-between">
+                    <span>{new Date(share.created_at).toLocaleString()}</span>
+                    {share.email && <span>{share.email}</span>}
                   </div>
                 </div>
               ))
