@@ -12,38 +12,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Intercept incoming auth tokens/codes and establish session
+  // Check for error parameters passed back from the server confirmation route
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search)
-    const code = queryParams.get('code')
-    const token = queryParams.get('token')
-    const type = queryParams.get('type') as any
-
-    if (code) {
-      setLoading(true)
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        if (!error) {
-          router.push('/dashboard')
-        } else {
-          setError(error.message)
-          setLoading(false)
-        }
-      })
-    } else if (token && type) {
-      setLoading(true)
-      supabase.auth.verifyOtp({
-        token_hash: token,
-        type: type,
-      }).then(({ error }) => {
-        if (!error) {
-          router.push('/dashboard')
-        } else {
-          setError(error.message)
-          setLoading(false)
-        }
-      })
+    const errorParam = queryParams.get('error')
+    if (errorParam) {
+      setError(errorParam)
     }
-  }, [router])
+  }, [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -59,7 +35,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/login`,
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
       },
     })
 
