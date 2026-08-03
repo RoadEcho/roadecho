@@ -388,10 +388,27 @@ export default function VaultDashboard() {
               className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-300 font-mono select-all"
             />
             <button
-              onClick={() => {
+              onClick={async () => {
                 navigator.clipboard.writeText(referralLink)
                 setCopiedRef(true)
                 setTimeout(() => setCopiedRef(false), 3000)
+
+                // Log the share event to admin analytics
+                try {
+                  await fetch('/api/shares', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      type: 'referral_copy',
+                      platform: 'web_share',
+                      userId: userId,
+                      email: userEmail,
+                      metadata: { link: referralLink }
+                    })
+                  })
+                } catch (err) {
+                  console.error('Failed to log share metric:', err)
+                }
               }}
               className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer"
             >
