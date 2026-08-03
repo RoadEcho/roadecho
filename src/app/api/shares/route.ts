@@ -42,11 +42,17 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (error) {
+      console.error('Supabase share fetch error:', error);
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, count, shares: data });
+    return NextResponse.json({ 
+      success: true, 
+      count: count ?? data?.length ?? 0, 
+      shares: data || [] 
+    });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('API share GET error:', err);
+    return NextResponse.json({ success: false, error: err.message || 'Internal server error' }, { status: 500 });
   }
 }
