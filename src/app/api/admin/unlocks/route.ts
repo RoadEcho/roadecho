@@ -37,12 +37,42 @@ export async function GET(request: Request) {
       authUsers.map((u): [string, string] => [u.id, u.email || 'Unknown'])
     )
 
-    const formattedUnlocks = (unlocks || []).map((u: any) => ({
-      id: u.id,
-      email: emailMap.get(u.user_id) || u.email || 'Customer Pass',
-      licensePlate: u.license_plate || u.plate || 'Vault Unlock',
-      createdAt: u.created_at || u.timestamp || new Date().toISOString()
-    }))
+    const now = new Date()
+
+    const formattedUnlocks = (unlocks || []).map((u: any) => {
+      const createdAt = new Date(u.created_at || u.timestamp || Date.now())
+      
+      // Default to 30 days access if an explicit expires_at column isn't present
+      const expiresAt = u.expires_at 
+        ? new Date(u.expires_at) 
+        : new Date(createdAt.getTime() + 30 * 24 * 60 * 60 * 1000)
+
+      const timeLeftMs = expiresAt.getTime() - now.getTime()
+      const isExpired = timeLeftMs <= 0
+
+      let timeLeftFormatted = 'Expired'
+      if (!isExpired) {
+        const daysLeft = Math.floor(timeLeftMs / (1000 * 60 * 60 * 24))
+        const hoursLeft = Math.floor((timeLeftMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+        if (daysLeft > 0) {
+          timeLeftFormatted = `${daysLeft}d ${hoursLeft}h left`
+        } else {
+          timeLeftFormatted = `${hoursLeft}h left`
+        }
+      }
+
+      return {
+        id: u.id,
+        email: emailMap.get(u.user_id) || u.email || 'Customer Pass',
+        licensePlate: u.license_plate || u.plate || 'Vault Unlock',
+        createdAt: createdAt.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        timeLeft: timeLeftFormatted,
+        isExpired: isExpired,
+        status: u.status || (isExpired ? 'Expired' : 'Active'),
+        transactionRef: u.stripe_session_id || u.transaction_ref || 'N/A'
+      }
+    })
 
     return NextResponse.json({ unlocks: formattedUnlocks })
   } catch (err: any) {
