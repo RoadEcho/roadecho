@@ -1,18 +1,27 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 export async function GET(request: Request) {
   try {
     const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized: Missing token.' }, { status: 401 });
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const token = authHeader.replace('Bearer ', '').trim();
+
+    // Create a request-scoped Supabase client using the user's bearer token
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    });
+
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
@@ -56,7 +65,7 @@ export async function GET(request: Request) {
 
     let messages: any[] = [];
     if (plates && plates.length > 0) {
-      // 3. Extract the pre-computed plate hashes directly (since user_plates stores the hash)
+      // 3. Extract the pre-computed plate hashes directly
       const plateHashes = plates.map(p => p.plate_number);
       const plateMap = new Map(plates.map(p => [p.plate_number, p]));
 
@@ -83,6 +92,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ plates: plates || [], messages, hasAccess });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || error }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
