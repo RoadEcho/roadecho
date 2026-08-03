@@ -12,14 +12,29 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Intercept the magic link redirect code and exchange it for a session
+  // Intercept incoming auth tokens/codes and establish session
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search)
     const code = queryParams.get('code')
+    const token = queryParams.get('token')
+    const type = queryParams.get('type') as any
 
     if (code) {
       setLoading(true)
       supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (!error) {
+          router.push('/dashboard')
+        } else {
+          setError(error.message)
+          setLoading(false)
+        }
+      })
+    } else if (token && type) {
+      setLoading(true)
+      supabase.auth.verifyOtp({
+        token_hash: token,
+        type: type,
+      }).then(({ error }) => {
         if (!error) {
           router.push('/dashboard')
         } else {
