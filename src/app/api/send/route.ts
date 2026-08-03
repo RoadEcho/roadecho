@@ -121,7 +121,6 @@ export async function POST(request: Request) {
       });
 
       if (!linkErr && linkData?.properties?.hashed_token) {
-        // Use hashed_token directly to avoid PKCE browser mismatch issues
         senderDashboardUrl = `${siteUrl}/api/auth/token?token_hash=${linkData.properties.hashed_token}&type=magiclink`;
       }
     } catch (authErr) {
