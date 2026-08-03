@@ -107,11 +107,31 @@ export async function POST(request: Request) {
       }
     }
 
-    // 7. Send Emails via Resend (Admin, Plate Owner, and Sender Confirmation)
+    // 7. Generate a secure auto-login magic link for the sender's dashboard
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://roadecho.vercel.app';
+    let senderDashboardUrl = `${siteUrl}/dashboard`;
+
+    try {
+      const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+        type: 'magiclink',
+        email: email,
+        options: {
+          redirectTo: `${siteUrl}/dashboard`,
+        },
+      });
+
+      if (!linkErr && linkData?.properties?.action_link) {
+        senderDashboardUrl = linkData.properties.action_link;
+      }
+    } catch (authErr) {
+      console.error('Failed to generate auto-login link:', authErr);
+    }
+
+    // 8. Send Emails via Resend (Admin, Plate Owner, and Sender Confirmation)
     const adminEmail = process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com';
-    const dashboardUrl = 'https://roadecho.vercel.app/dashboard';
-    const adminDashboardUrl = 'https://roadecho.vercel.app/admin';
-    const logoUrl = 'https://roadecho.vercel.app/logo.PNG';
+    const dashboardUrl = `${siteUrl}/dashboard`;
+    const adminDashboardUrl = `${siteUrl}/admin`;
+    const logoUrl = `${siteUrl}/logo.PNG`;
 
     await resend.emails.send({
       from: 'RoadEcho <onboarding@resend.dev>',
@@ -156,7 +176,7 @@ export async function POST(request: Request) {
       from: 'RoadEcho <onboarding@resend.dev>',
       to: [email],
       subject: `Your secure message to ${cleanCountry}:${cleanState} has been queued`,
-      text: `Message Dispatched\n\nYour message has been securely queued. View dashboard: ${dashboardUrl}`,
+      text: `Message Dispatched\n\nYour message has been securely queued. View dashboard: ${senderDashboardUrl}`,
       html: `
         <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
           <div style="text-align: center; margin-bottom: 20px;">
@@ -164,7 +184,7 @@ export async function POST(request: Request) {
           </div>
           <h2 style="color: #06b6d4; margin-top: 0; font-size: 18px;">Message Dispatched</h2>
           <p>Your secure message to location <strong>${cleanState}, ${cleanCountry}</strong> has been successfully queued.</p>
-          <a href="${dashboardUrl}" style="display: inline-block; background-color: #06b6d4; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 12px;">Open Plate Vault Dashboard</a>
+          <a href="${senderDashboardUrl}" style="display: inline-block; background-color: #06b6d4; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 12px;">Open Plate Vault Dashboard</a>
         </div>
       `
     });
