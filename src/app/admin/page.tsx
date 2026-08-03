@@ -59,6 +59,11 @@ interface UnlockRecord {
   email: string
   licensePlate: string
   createdAt: string
+  expiresAt: string
+  timeLeft: string
+  isExpired: boolean
+  status: string
+  transactionRef: string
 }
 
 export default function AdminDashboard() {
@@ -393,19 +398,32 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Vault Unlocks Directory Section */}
+      {/* Vault Unlocks Directory Section (Enhanced) */}
       <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl mb-8">
         <h2 className="text-lg font-semibold mb-4 text-slate-300">Vault Unlocks Directory</h2>
-        <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+        <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
           {unlocksList.length > 0 ? (
             unlocksList.map((item) => (
-              <div key={item.id} className="flex justify-between items-center p-3 bg-slate-900 border border-slate-800 rounded-lg text-sm">
-                <div>
-                  <p className="font-medium text-white">{item.email}</p>
-                  <p className="text-xs text-cyan-400 font-mono mt-0.5">Plate: {item.licensePlate}</p>
+              <div key={item.id} className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-sm space-y-1.5">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium text-white">{item.email}</p>
+                    <p className="text-xs text-cyan-400 font-mono mt-0.5">Plate: {item.licensePlate}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                      item.isExpired 
+                        ? 'bg-red-950/80 text-red-400 border border-red-800' 
+                        : 'bg-emerald-950/80 text-emerald-400 border border-emerald-800'
+                    }`}>
+                      {item.timeLeft || item.status}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right text-xs text-slate-400 font-mono">
-                  {new Date(item.createdAt).toLocaleString()}
+
+                <div className="flex justify-between items-center text-[11px] text-slate-400 pt-1.5 border-t border-slate-800/60 font-mono">
+                  <span>Unlocked: {new Date(item.createdAt).toLocaleString()}</span>
+                  <span>Ref: {item.transactionRef || 'N/A'}</span>
                 </div>
               </div>
             ))
