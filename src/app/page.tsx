@@ -3,6 +3,22 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
+const COUNTRIES = [
+  'USA',
+  'Canada',
+  'United Kingdom',
+  'Australia',
+  'Germany',
+  'France',
+  'Japan',
+  'Mexico',
+  'Spain',
+  'Italy',
+  'Brazil',
+  'India',
+  'Other'
+];
+
 export default function Home() {
   const [plate, setPlate] = useState('');
   const [country, setCountry] = useState('USA');
@@ -225,7 +241,7 @@ export default function Home() {
               onChange={(e) => setPlate(e.target.value.toUpperCase())}
               placeholder="ABC1234"
               required
-              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase"
+              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase font-mono"
             />
           </div>
 
@@ -234,14 +250,17 @@ export default function Home() {
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
                 Country
               </label>
-              <input
-                type="text"
+              <select
                 value={country}
-                onChange={(e) => setCountry(e.target.value.toUpperCase())}
-                placeholder="USA, CA, UK..."
-                required
-                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase"
-              />
+                onChange={(e) => setCountry(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors cursor-pointer"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c} value={c} className="bg-slate-950 text-white">
+                    {c}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
@@ -251,9 +270,9 @@ export default function Home() {
                 type="text"
                 value={region}
                 onChange={(e) => setRegion(e.target.value.toUpperCase())}
-                placeholder="CA, ON, Tokyo..."
+                placeholder="CA, ON, TOKYO..."
                 required
-                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase"
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase font-mono"
               />
             </div>
           </div>
