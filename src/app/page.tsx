@@ -93,12 +93,12 @@ export default function Home() {
       // ignore
     }
 
-    // Ensure share is reliably registered in the backend API
+    // Register share event in backend API for analytics and admin logs
     try {
       await fetch('/api/shares', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId })
+        body: JSON.stringify({ userId, user_id: userId, platform: 'web_share' })
       });
     } catch (err) {
       console.error('Failed to register share:', err);
