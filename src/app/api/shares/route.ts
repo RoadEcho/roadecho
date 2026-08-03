@@ -8,13 +8,14 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { userId, user_id, platform = 'general', email, licensePlate, metadata = {} } = body;
+    const { userId, user_id, platform, type, email, licensePlate, metadata = {} } = body;
 
     const finalUserId = userId || user_id || null;
+    const finalPlatform = type || platform || 'general';
 
     // Try inserting with all fields (new schema)
     const insertData: any = {
-      platform: platform || 'general',
+      platform: finalPlatform,
       created_at: new Date().toISOString(),
     };
 
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
     // Fallback if strict schema columns (like user_id or metadata) don't exist yet in the table
     if (error) {
       const fallbackData: any = {
-        platform: platform || 'general',
+        platform: finalPlatform,
       };
       if (email) fallbackData.email = email;
       if (licensePlate) fallbackData.licensePlate = licensePlate;
