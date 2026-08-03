@@ -13,56 +13,64 @@ export default function AuthConfirmPage() {
       try {
         const searchParams = new URLSearchParams(window.location.search)
         const code = searchParams.get('code')
-        const token_hash = searchParams.get('token_hash')
+        const tokenHash = searchParams.get('token_hash') || searchParams.get('token')
         const type = searchParams.get('type') as any
 
         // Check hash fragment (e.g. #access_token=...&refresh_token=...)
         const hash = window.location.hash
-        const hashParams = new URLSearchParams(hash.replace('#', ''))
-        const accessToken = hashParams.get('access_token')
-        const refreshToken = hashParams.get('refresh_token')
+        if (hash) {
+          const hashParams = new URLSearchParams(hash.replace('#', ''))
+          const accessToken = hashParams.get('access_token')
+          const refreshToken = hashParams.get('refresh_token')
 
-        // 1. Handle Hash Fragment (Implicit Flow)
-        if (accessToken && refreshToken) {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          })
-          if (error) throw error
-          router.push('/dashboard')
-          return
+          if (accessToken && refreshToken) {
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            })
+            if (error) throw error
+            router.replace('/dashboard')
+            return
+          }
         }
 
-        // 2. Handle Token Hash (OTP / Magic Link)
-        if (token_hash && type) {
-          const { error } = await supabase.auth.verifyOtp({
-            type: type || 'magiclink',
-            token_hash,
-          })
-          if (error) throw error
-          router.push('/dashboard')
-          return
+        // Handle Token Hash / PKCE code passed via token or token_hash query params
+        if (tokenHash) {
+          if (tokenHash.startsWith('pkce_')) {
+            const { error } = await supabase.auth.exchangeCodeForSession(tokenHash)
+            if (error) throw error
+            router.replace('/dashboard')
+            return
+          } else {
+            const { error } = await supabase.auth.verifyOtp({
+              type: type || 'magiclink',
+              token_hash: tokenHash,
+            })
+            if (error) throw error
+            router.replace('/dashboard')
+            return
+          }
         }
 
-        // 3. Handle PKCE Authorization Code
+        // Handle standard PKCE authorization code parameter
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code)
           if (error) throw error
-          router.push('/dashboard')
+          router.replace('/dashboard')
           return
         }
 
-        // 4. Fallback: Check if session already exists
+        // Fallback: Check if session already exists
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
-          router.push('/dashboard')
+          router.replace('/dashboard')
           return
         }
 
         throw new Error('No authentication parameters found.')
       } catch (err: any) {
         console.error('Auth confirmation error:', err)
-        router.push('/login?error=' + encodeURIComponent(err.message || 'Unable to verify login link. Please request a new link.'))
+        router.replace('/login?error=' + encodeURIComponent(err.message || 'Unable to verify login link. Please request a new link.'))
       }
     }
 
