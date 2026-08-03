@@ -58,6 +58,7 @@ export async function GET(request: Request) {
     if (plates && plates.length > 0) {
       // 3. Extract the pre-computed plate hashes directly (since user_plates stores the hash)
       const plateHashes = plates.map(p => p.plate_number);
+      const plateMap = new Map(plates.map(p => [p.plate_number, p]));
 
       // 4. Fetch matching messages using the hashes
       const { data: msgData, error: msgError } = await supabase
@@ -67,11 +68,16 @@ export async function GET(request: Request) {
         .order('created_at', { ascending: false });
 
       if (!msgError && msgData) {
-        // 5. Mask message content if the user hasn't paid/subscribed or activated a pass
-        messages = msgData.map(m => ({
-          ...m,
-          message: hasAccess ? m.message : '🔒 [Locked Message]'
-        }));
+        // 5. Attach matched plate info and mask content if unauthorized
+        messages = msgData.map(m => {
+          const matchedPlate = plateMap.get(m.license_plate);
+          return {
+            ...m,
+            plate_display: matchedPlate?.display_plate || 'Vehicle Plate',
+            plate_state: matchedPlate?.state || m.state_region,
+            message: hasAccess ? m.message : '🔒 [Locked Message]'
+          };
+        });
       }
     }
 
