@@ -51,28 +51,13 @@ export default function VaultDashboard() {
   useEffect(() => {
     let isMounted = true
 
-    // Absolute fail-safe: forces loading to stop after 6 seconds no matter what
-    const hardTimeout = setTimeout(() => {
-      if (isMounted && loading) {
-        setLoading(false)
-        setError('Loading took too long. Please tap Refresh below.')
-      }
-    }, 6000)
-
     async function initSessionAndData() {
       try {
-        // Race getSession against a 4s timeout to prevent mobile storage hangs
-        const sessionPromise = supabase.auth.getSession()
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 4000)
-        )
-
-        const res: any = await Promise.race([sessionPromise, timeoutPromise])
-        const session = res?.data?.session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
         if (!isMounted) return
 
-        if (!session) {
+        if (sessionError || !session) {
           window.location.href = '/login'
           return
         }
@@ -84,8 +69,8 @@ export default function VaultDashboard() {
       } catch (err: any) {
         console.error('Init error:', err)
         if (isMounted) {
-          // If session storage hangs, fallback to checking local storage token if available or redirect
-          window.location.href = '/login'
+          setLoading(false)
+          setError('Failed to initialize session. Please refresh.')
         }
       }
     }
@@ -94,7 +79,6 @@ export default function VaultDashboard() {
 
     return () => {
       isMounted = false
-      clearTimeout(hardTimeout)
     }
   }, [])
 
@@ -125,14 +109,9 @@ export default function VaultDashboard() {
   async function fetchVaultData(accessToken: string, currentUserId: string) {
     try {
       // 1. Fetch main vault data via API route
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000)
-
       const res = await fetch('/api/vault', {
-        headers: { 'Authorization': `Bearer ${accessToken}` },
-        signal: controller.signal
+        headers: { 'Authorization': `Bearer ${accessToken}` }
       })
-      clearTimeout(timeoutId)
 
       const data = await res.json()
       if (res.ok) {
