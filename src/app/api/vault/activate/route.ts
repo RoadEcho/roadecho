@@ -1,49 +1,32 @@
 import { NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = cookies()
+    // 1. Authenticate user via Bearer token sent from the frontend
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const token = authHeader.split(' ')[1]
 
-    // 1. Create a secure server-side client to verify the actual logged-in user session
-    const supabaseAuth = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {
-              // The method was called from a Server Component.
-            }
-          },
-        },
-      }
-    )
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey)
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token)
 
-    // 2. Authenticate the user (prevents malicious ID spoofing)
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const userId = user.id
 
-    // 3. Initialize admin client for safe database operations after user is verified
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // 2. Initialize admin client for safe database operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    // 4. Fetch the user's current vault state
+    // 3. Fetch the user's current vault state
     const { data: vault, error: fetchError } = await supabaseAdmin
       .from('user_pass_vault')
       .select('available_passes, pass_expires_at')
@@ -61,7 +44,7 @@ export async function POST(request: Request) {
     // Add 24 hours to active pass expiration
     const newExpiry = new Date(baseTime.getTime() + 24 * 60 * 60 * 1000).toISOString()
 
-    // 5. Atomic Update with Optimistic Locking (prevents race conditions/double-activation)
+    // 4. Atomic Update with Optimistic Locking (prevents race conditions/double-activation)
     const { data: updatedVault, error: updateError } = await supabaseAdmin
       .from('user_pass_vault')
       .update({
@@ -78,7 +61,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Conflict detected, please try again.' }, { status: 409 })
     }
 
-    return NextResponse.json({ success: true, pass_expires_at: newExpiry })
+    // 5. Log unlock event for admin analytics metrics
+    try {
+      await supabaseAdmin.from('unlocks').insert({
+        user_id: userId,
+        type: 'stored_pass_activation',
+        created_at: now.toISOString()
+      })
+    } catch (analyticsErr) {
+      console.error('Failed to log admin unlock analytics:', analyticsErr)
+    }
+
+    // 6. Return updated pass count so frontend state updates from 2 to 1 instantly
+    return NextResponse.json({
+      success: true,
+      available_passes: updatedVault.available_passes,
+      pass_expires_at: newExpiry
+    })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
