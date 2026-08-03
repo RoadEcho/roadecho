@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: plateError.message }, { status: 500 });
     }
 
-    // 2. Check if user has an active subscription or valid 24-hour pass
+    // 2. Check if user has an active subscription, legacy pass, or active vault pass
     const { data: subData } = await supabase
       .from('subscriptions')
       .select('*')
@@ -44,7 +44,15 @@ export async function GET(request: Request) {
       .gt('expires_at', new Date().toISOString())
       .maybeSingle();
 
-    const hasAccess = !!subData || !!passData;
+    const { data: vaultVaultData } = await supabase
+      .from('user_pass_vault')
+      .select('pass_expires_at')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const isVaultPassActive = vaultVaultData?.pass_expires_at && new Date(vaultVaultData.pass_expires_at) > new Date();
+
+    const hasAccess = !!subData || !!passData || !!isVaultPassActive;
 
     let messages: any[] = [];
     if (plates && plates.length > 0) {
@@ -59,7 +67,7 @@ export async function GET(request: Request) {
         .order('created_at', { ascending: false });
 
       if (!msgError && msgData) {
-        // 5. Mask message content if the user hasn't paid/subscribed yet
+        // 5. Mask message content if the user hasn't paid/subscribed or activated a pass
         messages = msgData.map(m => ({
           ...m,
           message: hasAccess ? m.message : '🔒 [Locked Message]'
