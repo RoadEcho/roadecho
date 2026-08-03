@@ -4,19 +4,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 const COUNTRIES = [
-  'USA',
-  'Canada',
-  'United Kingdom',
-  'Australia',
-  'Germany',
-  'France',
-  'Japan',
-  'Mexico',
-  'Spain',
-  'Italy',
-  'Brazil',
-  'India',
-  'Other'
+  'USA', 'Canada', 'United Kingdom', 'Australia', 'Germany', 
+  'France', 'Japan', 'Mexico', 'Spain', 'Italy', 'Brazil', 'India', 'Other'
 ];
 
 const US_STATES = [
@@ -43,7 +32,6 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Capture referral parameter from URL and store it locally
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const refId = params.get('ref');
@@ -75,41 +63,24 @@ export default function Home() {
     recognition.interimResults = true;
     recognition.lang = 'en-US';
 
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
-
+    recognition.onstart = () => setIsListening(true);
     recognition.onresult = (event: any) => {
       let transcript = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         transcript += event.results[0][i].transcript;
       }
       setMessage(transcript);
-
       if (event.results[event.results.length - 1].isFinal) {
         recognition.abort();
       }
     };
-
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      setIsListening(false);
-      if (event.error === 'not-allowed') {
-        alert('Microphone permission denied. Please allow microphone access in your browser or device settings.');
-      } else {
-        alert(`Speech error: ${event.error || 'Unknown error'}`);
-      }
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
 
     try {
       recognition.start();
-    } catch (err: any) {
+    } catch {
       setIsListening(false);
-      alert('Could not start microphone. Please try again.');
     }
   };
 
@@ -118,18 +89,19 @@ export default function Home() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       userId = session?.user?.id || null;
-    } catch (e) {
+    } catch {
       // ignore
     }
 
+    // Ensure share is reliably registered in the backend API
     try {
       await fetch('/api/shares', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId })
       });
-    } catch (e) {
-      // Silently fail
+    } catch (err) {
+      console.error('Failed to register share:', err);
     }
 
     const refUrl = userId ? `https://roadecho.vercel.app?ref=${userId}` : 'https://roadecho.vercel.app';
@@ -142,7 +114,7 @@ export default function Home() {
           text: shareText,
           url: refUrl,
         });
-      } catch (err) {
+      } catch {
         copyToClipboard(shareText);
       }
     } else {
@@ -176,8 +148,8 @@ export default function Home() {
         });
         latitude = position.coords.latitude;
         longitude = position.coords.longitude;
-      } catch (err) {
-        console.log('Location access declined or unavailable, proceeding without coordinates.');
+      } catch {
+        // Proceed without coordinates
       }
     }
 
@@ -185,16 +157,7 @@ export default function Home() {
       const res = await fetch('/api/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          plate, 
-          country, 
-          region, 
-          message, 
-          senderEmail, 
-          agreedToTerms,
-          latitude,
-          longitude 
-        }),
+        body: JSON.stringify({ plate, country, region, message, senderEmail, agreedToTerms, latitude, longitude }),
       });
 
       const data = await res.json();
@@ -222,7 +185,7 @@ export default function Home() {
       } else {
         setStatus(data.error || 'Failed to send message.');
       }
-    } catch (err) {
+    } catch {
       setStatus('An error occurred. Please try again.');
     } finally {
       setLoading(false);
@@ -230,214 +193,207 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-slate-950 text-white">
-      <div className="w-full max-w-md p-8 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md">
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 bg-slate-950 text-white">
+      <div className="w-full max-w-md space-y-4">
         
-        <div className="flex justify-center mb-4">
-          <div className="w-56 h-32 overflow-hidden relative rounded-2xl border border-slate-800 shadow-xl flex items-center justify-center bg-slate-950">
-            <img 
-              src="/logo.PNG" 
-              alt="RoadEcho Logo" 
-              className="absolute w-72 max-w-none scale-110 translate-y-1 object-cover" 
-            />
+        <div className="p-6 sm:p-8 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md">
+          <div className="flex justify-center mb-4">
+            <div className="w-48 h-28 overflow-hidden relative rounded-xl border border-slate-800 shadow-xl flex items-center justify-center bg-slate-950">
+              <img 
+                src="/logo.PNG" 
+                alt="RoadEcho Logo" 
+                className="absolute w-64 max-w-none scale-110 object-cover" 
+              />
+            </div>
+          </div>
+
+          <div className="mb-5 text-center">
+            <p className="text-slate-400 text-xs">
+              Privacy-first plate messaging with cryptographic hashing &amp; AI pre-moderation.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                License Plate
+              </label>
+              <input
+                type="text"
+                value={plate}
+                onChange={(e) => setPlate(e.target.value.toUpperCase())}
+                placeholder="ABC1234"
+                required
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono uppercase text-sm"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                  Country
+                </label>
+                <select
+                  value={country}
+                  onChange={(e) => handleCountryChange(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-cyan-500 text-sm cursor-pointer"
+                >
+                  {COUNTRIES.map((c) => (
+                    <option key={c} value={c} className="bg-slate-950 text-white">{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                  Region / State
+                </label>
+                {country === 'USA' ? (
+                  <select
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-cyan-500 font-mono uppercase text-sm cursor-pointer"
+                  >
+                    {US_STATES.map((st) => (
+                      <option key={st} value={st} className="bg-slate-950 text-white">{st}</option>
+                    ))}
+                  </select>
+                ) : country === 'Canada' ? (
+                  <select
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-cyan-500 font-mono uppercase text-sm cursor-pointer"
+                  >
+                    {CANADIAN_PROVINCES.map((pr) => (
+                      <option key={pr} value={pr} className="bg-slate-950 text-white">{pr}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value.toUpperCase())}
+                    placeholder="STATE"
+                    required
+                    className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono uppercase text-sm"
+                  />
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                Your Email (For Confirmation)
+              </label>
+              <input
+                type="email"
+                value={senderEmail}
+                onChange={(e) => setSenderEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Message
+                </label>
+                <button
+                  type="button"
+                  onClick={handleVoiceInput}
+                  className={`text-xs px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer ${
+                    isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'
+                  }`}
+                >
+                  {isListening ? 'Listening...' : '🎤 Speak'}
+                </button>
+              </div>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Your lights are on / Great parking job!"
+                rows={3}
+                required
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 resize-none text-sm"
+              />
+            </div>
+
+            <div className="flex items-start space-x-2 text-xs text-slate-400 pt-0.5">
+              <input
+                type="checkbox"
+                id="terms"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                required
+                className="mt-0.5 accent-cyan-500 cursor-pointer"
+              />
+              <label htmlFor="terms" className="cursor-pointer leading-relaxed">
+                I understand RoadEcho does not unmask senders and abides by{' '}
+                <a href="/terms" target="_blank" className="text-cyan-400 underline">Terms</a> &amp;{' '}
+                <a href="/privacy" target="_blank" className="text-cyan-400 underline">Privacy</a>.
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg shadow-lg transition-colors disabled:opacity-50 cursor-pointer text-sm"
+            >
+              {loading ? 'Processing through AI...' : 'Send Secure Message'}
+            </button>
+          </form>
+
+          {status && (
+            <div className="mt-3 p-3 bg-slate-950 border border-slate-800 rounded-lg text-center text-xs text-cyan-300">
+              {status}
+            </div>
+          )}
+
+          <div className="mt-5 p-3.5 bg-slate-950 border border-cyan-500/30 rounded-xl flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xs font-bold text-cyan-400">🚗 Own a vehicle?</h3>
+              <p className="text-[11px] text-slate-300">Check your plate in your secure vault.</p>
+            </div>
+            <a 
+              href="/dashboard" 
+              className="whitespace-nowrap px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition"
+            >
+              Check Plate &rarr;
+            </a>
           </div>
         </div>
 
-        <div className="mb-6 text-center">
-          <p className="text-slate-400 text-xs">
-            Privacy-first plate-to-plate messaging with cryptographic hashing and AI pre-moderation.
+        <div className="p-5 bg-slate-900/90 border border-cyan-500/30 rounded-2xl shadow-xl text-center">
+          <h3 className="text-sm font-bold text-white mb-1">
+            Spread the Word
+          </h3>
+          <p className="text-slate-400 text-xs mb-3">
+            Share RoadEcho with friends and let them check their plates too!
           </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-              License Plate
-            </label>
-            <input
-              type="text"
-              value={plate}
-              onChange={(e) => setPlate(e.target.value.toUpperCase())}
-              placeholder="ABC1234"
-              required
-              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase font-mono"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-                Country
-              </label>
-              <select
-                value={country}
-                onChange={(e) => handleCountryChange(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors cursor-pointer"
-              >
-                {COUNTRIES.map((c) => (
-                  <option key={c} value={c} className="bg-slate-950 text-white">
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-                State / Region
-              </label>
-              {country === 'USA' ? (
-                <select
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors cursor-pointer font-mono uppercase"
-                >
-                  {US_STATES.map((st) => (
-                    <option key={st} value={st} className="bg-slate-950 text-white">
-                      {st}
-                    </option>
-                  ))}
-                </select>
-              ) : country === 'Canada' ? (
-                <select
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors cursor-pointer font-mono uppercase"
-                >
-                  {CANADIAN_PROVINCES.map((pr) => (
-                    <option key={pr} value={pr} className="bg-slate-950 text-white">
-                      {pr}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value.toUpperCase())}
-                  placeholder="TOKYO, BAVARIA..."
-                  required
-                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors uppercase font-mono"
-                />
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-              Your Email (For Confirmation)
-            </label>
-            <input
-              type="email"
-              value={senderEmail}
-              onChange={(e) => setSenderEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
-            />
-          </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Message
-              </label>
-              <button
-                type="button"
-                onClick={handleVoiceInput}
-                className={`text-xs px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer ${
-                  isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'
-                }`}
-              >
-                {isListening ? 'Listening...' : '🎤 Speak Message'}
-              </button>
-            </div>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Your lights are on / Great parking job!"
-              rows={4}
-              required
-              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors resize-none"
-            />
-          </div>
-
-          <div className="flex items-start space-x-2 text-xs text-slate-400 pt-1">
-            <input
-              type="checkbox"
-              id="terms"
-              checked={agreedToTerms}
-              onChange={(e) => setAgreedToTerms(e.target.checked)}
-              required
-              className="mt-0.5 accent-cyan-500 cursor-pointer"
-            />
-            <label htmlFor="terms" className="cursor-pointer leading-relaxed">
-              I understand RoadEcho does not unmask anonymous senders and abides by{' '}
-              <a href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Terms</a> &amp;{' '}
-              <a href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Privacy Policy</a>.
-            </label>
-          </div>
-
+          
           <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg shadow-lg transition-colors disabled:opacity-50 cursor-pointer"
+            onClick={handleShare}
+            className="w-full py-2.5 px-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 text-xs"
           >
-            {loading ? 'Processing through AI...' : 'Send Secure Message'}
+            <span>📤 Share RoadEcho with Friends</span>
           </button>
-        </form>
 
-        {status && (
-          <div className="mt-4 p-3 bg-slate-950 border border-slate-800 rounded-lg text-center text-sm text-cyan-300">
-            {status}
-          </div>
-        )}
-
-        <div className="mt-6 p-4 bg-gradient-to-r from-cyan-950/60 to-slate-900 border border-cyan-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-bold text-cyan-400">🚗 Own a vehicle?</h3>
-            <p className="text-xs text-slate-300 mt-0.5">Curious if another driver left a note for you? Check your plate in your secure vault.</p>
-          </div>
-          <a 
-            href="/dashboard" 
-            className="whitespace-nowrap px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition"
-          >
-            Check My Plate &rarr;
-          </a>
+          {copied && (
+            <p className="text-xs text-emerald-400 mt-2 font-medium">
+              ✓ Link copied &amp; logged! Ready to paste.
+            </p>
+          )}
         </div>
+
+        <footer className="text-center text-xs text-slate-500 space-x-3 pb-2">
+          <a href="/faq" className="hover:text-cyan-400 transition-colors">FAQ</a>
+          <span>•</span>
+          <a href="/terms" className="hover:text-cyan-400 transition-colors">Terms</a>
+          <span>•</span>
+          <a href="/privacy" className="hover:text-cyan-400 transition-colors">Privacy</a>
+        </footer>
       </div>
-
-      <div className="w-full max-w-md mx-auto mt-6 p-6 bg-slate-900 border border-cyan-500/30 rounded-2xl shadow-xl text-center">
-        <div className="inline-block p-2 bg-cyan-500/10 text-cyan-400 rounded-full mb-3 text-lg">
-          🚗💨
-        </div>
-        <h3 className="text-base font-bold text-white mb-1">
-          Ever wanted to drop a parking tip or a great compliment to a driver?
-        </h3>
-        <p className="text-slate-400 text-xs mb-4 leading-relaxed">
-          Share RoadEcho with friends and let them check their plates too!
-        </p>
-        
-        <button
-          onClick={handleShare}
-          className="w-full py-3 px-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 text-sm"
-        >
-          <span>📤 Share RoadEcho with Friends</span>
-        </button>
-
-        {copied && (
-          <p className="text-xs text-emerald-400 mt-2 font-medium">
-            ✓ Link copied to clipboard! Ready to paste anywhere.
-          </p>
-        )}
-      </div>
-
-      <footer className="mt-6 text-center text-xs text-slate-500 space-x-4">
-        <a href="/faq" className="hover:text-cyan-400 transition-colors">FAQ</a>
-        <span>•</span>
-        <a href="/terms" className="hover:text-cyan-400 transition-colors">Terms</a>
-        <span>•</span>
-        <a href="/privacy" className="hover:text-cyan-400 transition-colors">Privacy</a>
-      </footer>
     </main>
   );
 }
