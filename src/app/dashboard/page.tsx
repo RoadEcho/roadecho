@@ -17,6 +17,8 @@ interface Message {
   country: string
   message: string
   created_at: string
+  plate_display?: string
+  plate_state?: string
 }
 
 interface Submission {
@@ -456,9 +458,17 @@ export default function VaultDashboard() {
         ) : (
           messages.map((m) => (
             <div key={m.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+              <div className="flex flex-col sm:flex-row justify-between text-xs text-slate-400 font-mono gap-1 border-b border-slate-900 pb-2">
+                <div>
+                  <span className="text-cyan-400 font-bold">Plate:</span> {m.plate_display || m.license_plate.substring(0, 12)} ({m.plate_state || m.state_region})
+                </div>
+                <div>
+                  <span className="text-cyan-400 font-bold">Received:</span> {new Date(m.created_at).toLocaleString()}
+                </div>
+              </div>
+
               <div className="flex justify-between text-xs text-slate-500 font-mono">
-                <span>Location: {m.state_region}, {m.country || 'USA'}</span>
-                <span>{new Date(m.created_at).toLocaleDateString()}</span>
+                <span>Location Sent: {m.state_region}, {m.country || 'USA'}</span>
               </div>
 
               {hasAccess || isPassActive ? (
