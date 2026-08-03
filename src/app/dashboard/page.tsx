@@ -108,7 +108,6 @@ export default function VaultDashboard() {
 
   async function fetchVaultData(accessToken: string, currentUserId: string) {
     try {
-      // 1. Fetch main vault data via API route
       const res = await fetch('/api/vault', {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       })
@@ -122,7 +121,6 @@ export default function VaultDashboard() {
         setError(data.error || 'Failed to load vault data.')
       }
 
-      // 2. Safely fetch secondary data with independent try/catch
       try {
         const { data: vaultData } = await supabase
           .from('user_pass_vault')
@@ -171,29 +169,34 @@ export default function VaultDashboard() {
 
   const handleActivatePass = async () => {
     if (!userId) return
-    setLoading(true)
     setError(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      if (!session) {
+        window.location.href = '/login'
+        return
+      }
 
       const res = await fetch('/api/vault/activate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ userId }),
       })
       const data = await res.json()
+      
       if (res.ok) {
-        setAvailablePasses((prev) => Math.max(0, prev - 1))
+        setAvailablePasses(data.available_passes)
         setPassExpiresAt(data.pass_expires_at)
-        fetchVaultData(session.access_token, userId)
+        setHasAccess(true)
+        await fetchVaultData(session.access_token, userId)
       } else {
         setError(data.error || 'Failed to activate pass.')
-        setLoading(false)
       }
-    } catch (err) {
-      setError('An error occurred while activating pass.')
-      setLoading(false)
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while activating pass.')
     }
   }
 
@@ -369,10 +372,10 @@ export default function VaultDashboard() {
 
         <button
           onClick={handleActivatePass}
-          disabled={availablePasses <= 0 || loading}
+          disabled={availablePasses <= 0}
           className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-lg transition disabled:opacity-40 cursor-pointer"
         >
-          Activate 24-Hour Pass From Vault
+          {availablePasses > 0 ? 'Activate 24-Hour Pass From Vault' : 'No Stored Passes Available'}
         </button>
 
         <div className="pt-2 border-t border-slate-900 space-y-2">
@@ -528,7 +531,19 @@ export default function VaultDashboard() {
               ) : (
                 <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-center space-y-2">
                   <p className="text-sm font-semibold text-cyan-400">🔒 Secure Message Waiting in Vault</p>
-                  <p className="text-xs text-slate-400">Unlock this message payload or enable continuous alerts below.</p>
+                  <p className="text-xs text-slate-400">Unlock this message payload or use a stored pass below.</p>
+                  
+                  {availablePasses > 0 && (
+                    <div className="pb-2">
+                      <button
+                        onClick={handleActivatePass}
+                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition shadow-md cursor-pointer"
+                      >
+                        🔑 Unlock with Stored Pass ({availablePasses} available)
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex justify-center gap-2 pt-1">
                     <button
                       onClick={() => handleCheckout('pass')}
