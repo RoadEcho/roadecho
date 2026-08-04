@@ -32,13 +32,38 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const refId = params.get('ref');
     if (refId) {
       localStorage.setItem('road_echo_ref', refId);
     }
-  }, []);
+
+    async function checkUserSession() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.email) {
+          setIsLoggedIn(true);
+          setUserEmail(session.user.email);
+          if (!senderEmail) {
+            setSenderEmail(session.user.email);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    checkUserSession();
+  }, [senderEmail]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setIsLoggedIn(false);
+    setUserEmail(null);
+  };
 
   const handleCountryChange = (newCountry: string) => {
     setCountry(newCountry);
@@ -93,7 +118,6 @@ export default function Home() {
       // ignore
     }
 
-    // Register share event in backend API for analytics and admin logs
     try {
       await fetch('/api/shares', {
         method: 'POST',
@@ -196,6 +220,39 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 bg-slate-950 text-white">
       <div className="w-full max-w-md space-y-4">
         
+        {/* Logged in Status Bar / Sign In / Vault Access */}
+        {isLoggedIn ? (
+          <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2.5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="inline-flex items-center gap-2 text-xs text-slate-300">
+                <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                Logged in as: <span className="font-mono text-cyan-300">{userEmail}</span>
+              </div>
+              <button
+                onClick={handleSignOut}
+                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition cursor-pointer"
+              >
+                Sign Out
+              </button>
+            </div>
+            <a
+              href="/dashboard"
+              className="block w-full py-2 text-center bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-lg transition shadow-md"
+            >
+              🚗 Check Plate Vault & History &rarr;
+            </a>
+          </div>
+        ) : (
+          <div className="flex justify-end">
+            <a
+              href="/login"
+              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-cyan-400 text-xs font-semibold rounded-lg transition"
+            >
+              Sign In / Vault &rarr;
+            </a>
+          </div>
+        )}
+
         <div className="p-6 sm:p-8 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md">
           <div className="flex justify-center mb-4">
             <div className="w-48 h-28 overflow-hidden relative rounded-xl border border-slate-800 shadow-xl flex items-center justify-center bg-slate-950">
@@ -359,7 +416,7 @@ export default function Home() {
               href="/dashboard" 
               className="whitespace-nowrap px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded-lg transition"
             >
-              Check Plate &rarr;
+              Check Vault &rarr;
             </a>
           </div>
         </div>
