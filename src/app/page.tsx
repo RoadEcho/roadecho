@@ -105,20 +105,20 @@ export default function Home() {
     }
 
     const refUrl = userId ? `https://roadecho.vercel.app?ref=${userId}` : 'https://roadecho.vercel.app';
-    const shareText = `Check out RoadEcho — the safe, anonymous way to message any vehicle license plate! 🚗💨\n\n${refUrl}`;
+    const shareMessage = `Check out RoadEcho — the safe, anonymous way to message any vehicle license plate! 🚗💨`;
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'RoadEcho - Secure Plate Messaging',
-          text: shareText,
+          text: shareMessage,
           url: refUrl,
         });
       } catch {
-        copyToClipboard(shareText);
+        copyToClipboard(`${shareMessage}\n\n${refUrl}`);
       }
     } else {
-      copyToClipboard(shareText);
+      copyToClipboard(`${shareMessage}\n\n${refUrl}`);
     }
   };
 
