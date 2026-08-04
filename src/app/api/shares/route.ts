@@ -13,7 +13,6 @@ export async function POST(request: Request) {
     const finalUserId = userId || user_id || null;
     const finalPlatform = type || platform || 'general';
 
-    // Try inserting with all fields (new schema)
     const insertData: any = {
       platform: finalPlatform,
       created_at: new Date().toISOString(),
@@ -29,7 +28,6 @@ export async function POST(request: Request) {
       .insert([insertData])
       .select();
 
-    // Fallback if strict schema columns (like user_id or metadata) don't exist yet in the table
     if (error) {
       const fallbackData: any = {
         platform: finalPlatform,
@@ -66,7 +64,6 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      // Fallback query if created_at column is missing
       const fallbackQuery = await supabase
         .from('shares')
         .select('*', { count: 'exact' });
