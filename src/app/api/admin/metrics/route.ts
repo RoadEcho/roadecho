@@ -32,11 +32,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access required.' }, { status: 403 });
     }
 
+    // Fetch total accounts directly from Supabase Auth admin API (source of truth)
+    const { data: authUsersData } = await supabase.auth.admin.listUsers();
+    const totalAccountsCount = authUsersData?.users?.length || 0;
+
     const [
       messagesRes,
       sharesRes,
       referralsRes,
-      profilesRes,
       subscriptionsRes,
       passesRes,
       unlocksRes,
@@ -47,7 +50,6 @@ export async function GET(request: Request) {
       supabase.from('messages').select('*', { count: 'exact', head: true }),
       supabase.from('shares').select('*', { count: 'exact', head: true }),
       supabase.from('referrals').select('*', { count: 'exact', head: true }),
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }),
       supabase.from('passes').select('*').order('created_at', { ascending: false }),
       supabase.from('unlocks').select('*').order('created_at', { ascending: false }),
@@ -105,7 +107,7 @@ export async function GET(request: Request) {
       totalSubscribers: subscriptionsRes.count || 0,
       totalShares: sharesRes.count || 0,
       totalReferrals: referralsRes.count || 0,
-      totalAccounts: profilesRes.count || 0,
+      totalAccounts: totalAccountsCount,
       breakdowns: {
         vaultActivations: combinedUnlocks,
         shares: sharesLogs,
