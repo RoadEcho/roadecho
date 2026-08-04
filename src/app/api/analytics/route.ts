@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       referralsRes, 
       subsRes
     ] = await Promise.all([
-      supabase.from('messages').select('license_plate, plate_hash, created_at'),
+      supabase.from('messages').select('license_plate, created_at'),
       supabase.from('passes').select('created_at, updated_at'),
       supabase.from('unlocks').select('created_at, updated_at'),
       supabase.from('user_passes').select('updated_at, created_at'),
@@ -101,7 +101,7 @@ export async function GET(request: Request) {
     }
 
     // Calculate unique plates with messages
-    const uniquePlatesCount = new Set(messages.map(m => m.license_plate || m.plate_hash).filter(Boolean)).size
+    const uniquePlatesCount = new Set(messages.map(m => m.license_plate).filter(Boolean)).size
 
     // Helper to group by timeframe
     const groupStats = (items: { created_at: string }[]) => {
