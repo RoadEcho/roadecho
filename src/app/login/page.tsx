@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -16,7 +17,7 @@ export default function LoginPage() {
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search)
     const errorParam = queryParams.get('error')
-    if (errorParam) {
+    if (errorParam && errorParam !== '{}') {
       setError(errorParam)
     }
   }, [])
@@ -32,21 +33,28 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm`,
-      },
-    })
+    try {
+      const { error: authError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+        },
+      })
 
-    if (authError) {
-      setError(authError.message)
-      setLoading(false)
-    } else {
-      setSubmitted(true)
+      if (authError) {
+        setError(authError.message || 'Failed to authenticate.')
+      } else {
+        setSubmitted(true)
+      }
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred.')
+    } finally {
       setLoading(false)
     }
   }
+
+  // Ensure error is strictly a renderable non-empty string, filtering out any accidental objects
+  const errorMessage = typeof error === 'string' && error.trim() !== '' && error !== '{}' ? error : null
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-slate-950 text-white">
@@ -54,9 +62,9 @@ export default function LoginPage() {
         
         {/* Back Button */}
         <div className="mb-4">
-          <a href="/" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium">
+          <Link href="/" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium">
             &larr; Back to Home
-          </a>
+          </Link>
         </div>
 
         {/* Logo Display */}
@@ -73,9 +81,9 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold mb-2">RoadEcho Login</h1>
         <p className="text-slate-400 text-sm mb-6">Enter your email to sign in or create an account via magic link.</p>
 
-        {error && (
+        {errorMessage && (
           <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">
-            {error}
+            {errorMessage}
           </div>
         )}
 
@@ -111,8 +119,8 @@ export default function LoginPage() {
               />
               <label htmlFor="login-terms" className="cursor-pointer leading-relaxed">
                 I agree to the{' '}
-                <a href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Terms of Service</a> and{' '}
-                <a href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Privacy Policy</a>.
+                <Link href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Terms of Service</Link> and{' '}
+                <Link href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Privacy Policy</Link>.
               </label>
             </div>
 
