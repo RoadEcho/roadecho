@@ -156,7 +156,7 @@ export async function POST(request: Request) {
     // Send Subscription Expired Email
     try {
       const customerId = subscription.customer as string
-      const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer
+      const customer = (await stripe.customers.retrieve(customerId)) as any
       if (customer && !customer.deleted && customer.email) {
         await resend.emails.send({
           from: 'RoadEcho <onboarding@resend.dev>',
