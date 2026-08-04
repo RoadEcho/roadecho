@@ -242,20 +242,20 @@ export default function VaultDashboard() {
     }
 
     const shareUrl = referralLink || (userId ? `https://roadecho.vercel.app/?ref=${userId}` : 'https://roadecho.vercel.app')
-    const shareText = `Check out RoadEcho — the safe, anonymous way to message any vehicle license plate! 🚗💨\n\n${shareUrl}`
+    const shareMessage = `Check out RoadEcho — the safe, anonymous way to message any vehicle license plate! 🚗💨`
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'RoadEcho - Secure Plate Messaging',
-          text: shareText,
+          text: shareMessage,
           url: shareUrl,
         })
       } catch {
-        copyToClipboardShare(shareText)
+        copyToClipboardShare(`${shareMessage}\n\n${shareUrl}`)
       }
     } else {
-      copyToClipboardShare(shareText)
+      copyToClipboardShare(`${shareMessage}\n\n${shareUrl}`)
     }
   }
 
