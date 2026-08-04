@@ -43,8 +43,8 @@ export async function GET(request: Request) {
       subsRes
     ] = await Promise.all([
       supabase.from('messages').select('plate_hash, license_plate, created_at'),
-      supabase.from('passes').select('created_at, updated_at'),
-      supabase.from('unlocks').select('created_at, updated_at'),
+      supabase.from('passes').select('created_at'),
+      supabase.from('unlocks').select('created_at'),
       supabase.from('user_passes').select('updated_at, created_at'),
       supabase.from('user_pass_vault').select('available_passes, pass_expires_at, updated_at, created_at'),
       supabase.from('shares').select('created_at'),
@@ -95,7 +95,6 @@ export async function GET(request: Request) {
       }
     }
 
-    // Securely count unique plates using cryptographic plate_hash with fallback
     const uniquePlatesCount = new Set(messages.map(m => m.plate_hash || m.license_plate).filter(Boolean)).size
 
     const groupStats = (items: { created_at: string }[]) => {
