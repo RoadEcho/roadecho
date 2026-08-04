@@ -235,7 +235,14 @@ export default function VaultDashboard() {
       await fetch('/api/shares', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, user_id: userId, email: userEmail, platform: 'web_share' })
+        body: JSON.stringify({
+          userId,
+          user_id: userId,
+          email: userEmail,
+          platform: 'web_share',
+          type: 'native_share',
+          metadata: { link: referralLink }
+        })
       })
     } catch (err) {
       console.error('Failed to register share:', err)
@@ -435,10 +442,11 @@ export default function VaultDashboard() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                      type: 'referral_copy',
-                      platform: 'web_share',
-                      userId: userId,
+                      userId,
+                      user_id: userId,
                       email: userEmail,
+                      platform: 'web_share',
+                      type: 'referral_copy',
                       metadata: { link: referralLink }
                     })
                   })
