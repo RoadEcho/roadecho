@@ -91,6 +91,7 @@ export default function AdminDashboard() {
   const [senders, setSenders] = useState<SenderUser[]>([])
   const [unlocksList, setUnlocksList] = useState<UnlockRecord[]>([])
   const [sharesList, setSharesList] = useState<ShareRecord[]>([])
+  const [adminEmail, setAdminEmail] = useState<string | null>(null)
   const [newEmail, setNewEmail] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -111,6 +112,8 @@ export default function AdminDashboard() {
         router.push('/admin/login')
         return
       }
+
+      setAdminEmail(session.user.email)
 
       const { data: adminRecord, error: adminErr } = await supabase
         .from('admin_users')
@@ -322,9 +325,16 @@ export default function AdminDashboard() {
       
       {/* Header Controls */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-950/80 border border-slate-800 p-4 rounded-xl mb-6">
-        <h1 className="text-base sm:text-lg font-bold text-cyan-400 flex items-center gap-2">
-          🔒 RoadEcho Admin Command Center
-        </h1>
+        <div>
+          <h1 className="text-base sm:text-lg font-bold text-cyan-400 flex items-center gap-2">
+            🔒 RoadEcho Admin Command Center
+          </h1>
+          {adminEmail && (
+            <p className="text-xs text-slate-400 mt-1">
+              Logged in as: <span className="text-cyan-400 font-medium">{adminEmail}</span>
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           <a
             href="/dashboard"
