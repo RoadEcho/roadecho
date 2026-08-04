@@ -156,7 +156,10 @@ export default function AdminDashboard() {
       })
       if (unlocksRes.ok) {
         const unlockData = await unlocksRes.json()
-        setUnlocksList(unlockData.unlocks || [])
+        const items = unlockData.unlocks || []
+        setUnlocksList(items)
+        // Dynamically override totalUnlocks to guarantee synchronization with directory length
+        setData(prev => prev ? { ...prev, totalUnlocks: items.length } : prev)
       }
 
       const sharesRes = await fetch('/api/shares', {
@@ -165,7 +168,6 @@ export default function AdminDashboard() {
       if (sharesRes.ok) {
         const shareData = await sharesRes.json()
         setSharesList(shareData.shares || [])
-        // Ensure totalShares reflects the accurate live count if provided
         if (shareData.count !== undefined && data) {
           setData(prev => prev ? { ...prev, totalShares: shareData.count } : prev)
         }
@@ -232,6 +234,9 @@ export default function AdminDashboard() {
   if (loading) return <div className="p-10 text-white text-center bg-slate-950 min-h-screen">Verifying secure admin access...</div>
   if (error && !data) return <div className="p-10 text-red-400 text-center bg-slate-950 min-h-screen">Access Denied: {error}</div>
 
+  // Resolved count guarantees fallback accuracy matching the directory list exactly
+  const resolvedTotalUnlocks = unlocksList.length > 0 ? unlocksList.length : (data?.totalUnlocks || 0)
+
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-white my-8">
       
@@ -265,7 +270,7 @@ export default function AdminDashboard() {
         </div>
         <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Unlocks</p>
-          <p className="text-2xl font-black text-emerald-400 mt-1">{data?.totalUnlocks || 0}</p>
+          <p className="text-2xl font-black text-emerald-400 mt-1">{resolvedTotalUnlocks}</p>
         </div>
         <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Subscribers</p>
