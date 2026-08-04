@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -31,27 +34,76 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access restricted.' }, { status: 403 })
     }
 
-    // 3. Fetch records for messages, unlocks, shares, referrals, and active subscriptions
-    const [messagesRes, unlocksRes, sharesRes, referralsRes, subsRes] = await Promise.all([
-      supabase.from('messages').select('license_plate, created_at'),
-      supabase.from('user_access').select('created_at'),
+    // 3. Fetch records for messages, all unlock sources, shares, referrals, and active subscriptions in parallel
+    const [
+      messagesRes, 
+      passesRes, 
+      unlocksTableRes, 
+      userPassesRes, 
+      passVaultRes, 
+      sharesRes, 
+      referralsRes, 
+      subsRes
+    ] = await Promise.all([
+      supabase.from('messages').select('license_plate, plate_hash, created_at'),
+      supabase.from('passes').select('created_at'),
+      supabase.from('unlocks').select('created_at'),
+      supabase.from('user_passes').select('updated_at, created_at'),
+      supabase.from('user_pass_vault').select('available_passes, pass_expires_at, updated_at, created_at'),
       supabase.from('shares').select('created_at'),
-      supabase.from('referrals').select('created_at'), // Added referrals lookup
+      supabase.from('referrals').select('created_at'),
       supabase.from('subscriptions').select('created_at', { count: 'exact', head: true }).eq('status', 'active')
     ])
 
-    if (messagesRes.error || unlocksRes.error || sharesRes.error || referralsRes.error || subsRes.error) {
-      throw new Error(messagesRes.error?.message || unlocksRes.error?.message || sharesRes.error?.message || referralsRes.error?.message || subsRes.error?.message)
+    if (
+      messagesRes.error || 
+      passesRes.error || 
+      unlocksTableRes.error || 
+      userPassesRes.error || 
+      passVaultRes.error || 
+      sharesRes.error || 
+      referralsRes.error || 
+      subsRes.error
+    ) {
+      throw new Error(
+        messagesRes.error?.message || 
+        passesRes.error?.message || 
+        unlocksTableRes.error?.message || 
+        userPassesRes.error?.message || 
+        passVaultRes.error?.message || 
+        sharesRes.error?.message || 
+        referralsRes.error?.message || 
+        subsRes.error?.message
+      )
     }
 
     const messages = messagesRes.data || []
-    const unlocks = unlocksRes.data || []
     const shares = sharesRes.data || []
     const referrals = referralsRes.data || []
     const totalSubscribers = subsRes.count || 0
 
+    // Combine all unlock/pass tables into a single unified array
+    const combinedUnlocks: { created_at: string }[] = []
+
+    (passesRes.data || []).forEach(item => {
+      if (item.created_at) combinedUnlocks.push({ created_at: item.created_at })
+    })
+    (unlocksTableRes.data || []).forEach(item => {
+      if (item.created_at) combinedUnlocks.push({ created_at: item.created_at })
+    })
+    (userPassesRes.data || []).forEach(item => {
+      const ts = item.updated_at || item.created_at
+      if (ts) combinedUnlocks.push({ created_at: ts })
+    })
+    (passVaultRes.data || []).forEach(item => {
+      if ((item.available_passes ?? 0) > 0 || item.pass_expires_at) {
+        const ts = item.updated_at || item.created_at
+        if (ts) combinedUnlocks.push({ created_at: ts })
+      }
+    })
+
     // Calculate unique plates with messages
-    const uniquePlatesCount = new Set(messages.map(m => m.license_plate).filter(Boolean)).size
+    const uniquePlatesCount = new Set(messages.map(m => m.license_plate || m.plate_hash).filter(Boolean)).size
 
     // Helper to group by timeframe
     const groupStats = (items: { created_at: string }[]) => {
@@ -85,12 +137,12 @@ export async function GET(request: Request) {
     return NextResponse.json({
       totalMessages: messages.length,
       uniquePlatesCount,
-      totalUnlocks: unlocks.length,
+      totalUnlocks: combinedUnlocks.length,
       totalSubscribers,
       totalShares: shares.length,
-      totalReferrals: referrals.length, // Reports live total referral count
+      totalReferrals: referrals.length,
       messagesBreakdown: groupStats(messages),
-      unlocksBreakdown: groupStats(unlocks),
+      unlocksBreakdown: groupStats(combinedUnlocks),
       sharesBreakdown: groupStats(shares)
     })
   } catch (err: any) {
