@@ -11,6 +11,7 @@ interface AnalyticsData {
   totalSubscribers: number
   totalShares: number
   totalReferrals: number
+  totalLogins: number
   messagesBreakdown: {
     daily: Record<string, number>
     weekly: Record<string, number>
@@ -24,6 +25,12 @@ interface AnalyticsData {
     yearly: Record<string, number>
   }
   sharesBreakdown: {
+    daily: Record<string, number>
+    weekly: Record<string, number>
+    monthly: Record<string, number>
+    yearly: Record<string, number>
+  }
+  loginsBreakdown: {
     daily: Record<string, number>
     weekly: Record<string, number>
     monthly: Record<string, number>
@@ -124,6 +131,47 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error(json.error || 'Failed to load analytics')
       setData(json)
 
+      // Fetch user logins directly and compute breakdowns
+      const { data: loginsRows } = await supabase
+        .from('user_logins')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      const dailyLogins: Record<string, number> = {}
+      const weeklyLogins: Record<string, number> = {}
+      const monthlyLogins: Record<string, number> = {}
+      const yearlyLogins: Record<string, number> = {}
+
+      if (loginsRows) {
+        loginsRows.forEach(item => {
+          const date = new Date(item.created_at)
+          const dayKey = date.toISOString().split('T')[0]
+          const monthKey = dayKey.substring(0, 7)
+          const yearKey = dayKey.substring(0, 4)
+
+          dailyLogins[dayKey] = (dailyLogins[dayKey] || 0) + 1
+          monthlyLogins[monthKey] = (monthlyLogins[monthKey] || 0) + 1
+          yearlyLogins[yearKey] = (yearlyLogins[yearKey] || 0) + 1
+
+          const d = new Date(date)
+          d.setHours(0,0,0,0)
+          d.setDate(d.getDate() - d.getDay())
+          const weekKey = `Week of ${d.toISOString().split('T')[0]}`
+          weeklyLogins[weekKey] = (weeklyLogins[weekKey] || 0) + 1
+        })
+      }
+
+      setData(prev => prev ? {
+        ...prev,
+        totalLogins: loginsRows?.length || 0,
+        loginsBreakdown: {
+          daily: dailyLogins,
+          weekly: weeklyLogins,
+          monthly: monthlyLogins,
+          yearly: yearlyLogins
+        }
+      } : prev)
+
       const userRes = await fetch('/api/admin/users', {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       })
@@ -158,7 +206,6 @@ export default function AdminDashboard() {
         const unlockData = await unlocksRes.json()
         const items = unlockData.unlocks || []
         setUnlocksList(items)
-        // Dynamically override totalUnlocks to guarantee synchronization with directory length
         setData(prev => prev ? { ...prev, totalUnlocks: items.length } : prev)
       }
 
@@ -234,7 +281,6 @@ export default function AdminDashboard() {
   if (loading) return <div className="p-10 text-white text-center bg-slate-950 min-h-screen">Verifying secure admin access...</div>
   if (error && !data) return <div className="p-10 text-red-400 text-center bg-slate-950 min-h-screen">Access Denied: {error}</div>
 
-  // Resolved count guarantees fallback accuracy matching the directory list exactly
   const resolvedTotalUnlocks = unlocksList.length > 0 ? unlocksList.length : (data?.totalUnlocks || 0)
 
   return (
@@ -245,7 +291,13 @@ export default function AdminDashboard() {
         <h1 className="text-base sm:text-lg font-bold text-cyan-400 flex items-center gap-2">
           🔒 RoadEcho Admin Command Center
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <a
+            href="/dashboard"
+            className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-lg text-xs font-bold transition cursor-pointer"
+          >
+            🚗 Go to Vault
+          </a>
           <button onClick={checkAdminAndFetch} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer">
             Refresh Data
           </button>
@@ -285,12 +337,12 @@ export default function AdminDashboard() {
           <p className="text-2xl font-black text-pink-400 mt-1">{data?.totalReferrals || 0}</p>
         </div>
         <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
-          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Accounts</p>
-          <p className="text-2xl font-black text-purple-400 mt-1">{userStats?.totalUsers || 0}</p>
+          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Logins</p>
+          <p className="text-2xl font-black text-indigo-400 mt-1">{data?.totalLogins || 0}</p>
         </div>
         <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
-          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Active (30 Days)</p>
-          <p className="text-2xl font-black text-amber-400 mt-1">{userStats?.activeUsers || 0}</p>
+          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Accounts</p>
+          <p className="text-2xl font-black text-purple-400 mt-1">{userStats?.totalUsers || 0}</p>
         </div>
       </div>
 
@@ -313,7 +365,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-lg space-y-2">
             <p className="text-xs font-semibold text-slate-400 uppercase">Messages ({activeTab})</p>
             <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
@@ -354,6 +406,22 @@ export default function AdminDashboard() {
                   <div key={key} className="flex justify-between items-center text-xs font-mono">
                     <span className="text-slate-300">{key}</span>
                     <span className="text-teal-400 font-bold">{val} shares</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-500 italic">No records.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-lg space-y-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase">Logins ({activeTab})</p>
+            <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+              {data?.loginsBreakdown?.[activeTab] && Object.keys(data.loginsBreakdown[activeTab]).length > 0 ? (
+                Object.entries(data.loginsBreakdown[activeTab]).map(([key, val]) => (
+                  <div key={key} className="flex justify-between items-center text-xs font-mono">
+                    <span className="text-slate-300">{key}</span>
+                    <span className="text-indigo-400 font-bold">{val} logins</span>
                   </div>
                 ))
               ) : (
