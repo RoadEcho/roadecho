@@ -32,6 +32,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access restricted.' }, { status: 403 })
     }
 
+    // Fetch records using exact existing column schemas per table
     const [
       messagesRes, 
       passesRes, 
@@ -45,8 +46,8 @@ export async function GET(request: Request) {
       supabase.from('messages').select('plate_hash, license_plate, created_at'),
       supabase.from('passes').select('created_at'),
       supabase.from('unlocks').select('created_at'),
-      supabase.from('user_passes').select('updated_at, created_at'),
-      supabase.from('user_pass_vault').select('available_passes, pass_expires_at, updated_at, created_at'),
+      supabase.from('user_passes').select('updated_at'),
+      supabase.from('user_pass_vault').select('available_passes, pass_expires_at, updated_at'),
       supabase.from('shares').select('created_at'),
       supabase.from('referrals').select('created_at'),
       supabase.from('subscriptions').select('created_at', { count: 'exact', head: true }).eq('status', 'active')
