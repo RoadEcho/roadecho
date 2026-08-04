@@ -30,27 +30,47 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access required.' }, { status: 403 });
     }
 
-    // Fetch total message submissions count
-    const { count: totalMessages } = await supabase
-      .from('messages')
-      .select('*', { count: 'exact', head: true });
-
-    // Fetch total vault unlocks count (from Stripe checkouts/passes)
-    const { count: totalUnlocks } = await supabase
-      .from('user_access')
-      .select('*', { count: 'exact', head: true });
-
-    // Fetch total active monthly subscribers count
-    const { count: totalSubscribers } = await supabase
-      .from('subscriptions')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active');
+    // Fetch core metric counts and raw log data in parallel
+    const [
+      messagesRes,
+      vaultRes,
+      sharesRes,
+      referralsRes,
+      profilesRes,
+      subscriptionsRes,
+      platesRes,
+      vaultLogsRes,
+      sharesLogsRes,
+      messagesLogsRes
+    ] = await Promise.all([
+      supabase.from('messages').select('*', { count: 'exact', head: true }),
+      supabase.from('vault_activations').select('*', { count: 'exact', head: true }), // Fixed to correct table
+      supabase.from('shares').select('*', { count: 'exact', head: true }),
+      supabase.from('referrals').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('subscriptions').select('*', { count: 'exact', head: true }),
+      supabase.from('messages').select('plate_hash', { count: 'exact', head: true }),
+      
+      // Fetch raw logs for activity breakdowns
+      supabase.from('vault_activations').select('created_at'),
+      supabase.from('shares').select('created_at, share_type'),
+      supabase.from('messages').select('created_at')
+    ]);
 
     return NextResponse.json({ 
       success: true, 
-      totalMessages: totalMessages || 0,
-      totalUnlocks: totalUnlocks || 0,
-      totalSubscribers: totalSubscribers || 0,
+      totalMessages: messagesRes.count || 0,
+      platesMessaged: platesRes.count || messagesRes.count || 0,
+      totalUnlocks: vaultRes.count || 0,
+      totalSubscribers: subscriptionsRes.count || 0,
+      totalShares: sharesRes.count || 0,
+      totalReferrals: referralsRes.count || 0,
+      totalAccounts: profilesRes.count || 0,
+      breakdowns: {
+        vaultActivations: vaultLogsRes.data || [],
+        shares: sharesLogsRes.data || [],
+        messages: messagesLogsRes.data || []
+      },
       messagesBreakdown: { daily: {}, weekly: {}, monthly: {}, yearly: {} },
       unlocksBreakdown: { daily: {}, weekly: {}, monthly: {}, yearly: {} }
     });
