@@ -21,7 +21,7 @@ export default function FAQPage() {
               <div>
                 <strong className="text-slate-200 block">How does RoadEcho protect my license plate and privacy?</strong>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  To ensure absolute compliance with the Driver&apos;s Privacy Protection Act (DPPA) and state privacy laws, raw license plate strings are transformed using SHA-256 cryptographic hashing with unique salts. No raw plate numbers or plain-text Personally Identifiable Information (PII) are ever stored in the database.
+                  To ensure absolute compliance with the Driver&apos;s Privacy Protection Act (DPPA) and international privacy laws, raw license plate strings are transformed using SHA-256 cryptographic hashing with unique server-side salts. No raw plate numbers or plain-text Personally Identifiable Information (PII) are ever stored in the database.
                 </p>
               </div>
               <div>
@@ -42,7 +42,7 @@ export default function FAQPage() {
               <div>
                 <strong className="text-slate-200 block">How are messages sent and screened?</strong>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Senders look up a vehicle by state and plate, type or dictate a message via browser-native voice integration, and submit it with a mandatory terms agreement. All messages pass through real-time autonomous AI pre-moderation filters to instantly intercept and block harassment, threats, or toxic language.
+                  Senders look up a vehicle by state and plate, type or dictate a message via browser-native voice integration, and submit it with a mandatory terms agreement. All messages pass through real-time autonomous OpenAI pre-moderation filters to instantly intercept and block harassment, threats, or toxic language.
                 </p>
               </div>
               <div>
@@ -57,7 +57,7 @@ export default function FAQPage() {
           {/* Section 3 */}
           <div>
             <h2 className="text-base font-semibold text-white mb-2 pt-2 border-t border-slate-800/80">
-              3. Vaults & Monetization
+              3. Vaults, Monetization & Data Rights
             </h2>
             <div className="space-y-3 pl-2">
               <div>
@@ -69,7 +69,7 @@ export default function FAQPage() {
               <div>
                 <strong className="text-slate-200 block">How does the Referral Rewards Vault work?</strong>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  You receive a unique referral link in your vault dashboard. When 5 friends use your link to send a message or claim a plate (or when someone subscribes), a 24-hour access pass is safely deposited into your stored pass vault.
+                  You receive a unique referral link in your vault dashboard. When friends use your link to send a message or claim a plate, a 24-hour access pass is safely deposited into your stored pass vault.
                 </p>
               </div>
               <div>
@@ -91,6 +91,12 @@ export default function FAQPage() {
                   <li><strong className="text-slate-300">24-Hour Pass ($1.99):</strong> Pay a one-time digital decryption and delivery fee to read a waiting message payload.</li>
                   <li><strong className="text-slate-300">Active Subscriber ($2.99 / month):</strong> Receive continuous real-time alert notifications and streamlined vault access.</li>
                 </ul>
+              </div>
+              <div>
+                <strong className="text-slate-200 block">How do I delete my account and data (GDPR Compliance)?</strong>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  In compliance with international GDPR and UK GDPR regulations, you maintain absolute Data Subject Rights. You can execute instant self-service account deletion and permanent data record purging directly through your user dashboard.
+                </p>
               </div>
             </div>
           </div>
