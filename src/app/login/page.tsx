@@ -34,7 +34,9 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const { error: authError } = await supabase.auth.signInWithOtp({
+      console.log('Attempting sign in with OTP for:', email)
+
+      const { data, error: authError } = await supabase.auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true, // Crucial: forces user creation/signup on first entry
@@ -42,13 +44,16 @@ export default function LoginPage() {
         },
       })
 
+      console.log('Supabase OTP response:', { data, authError })
+
       if (authError) {
         setError(authError.message || 'Failed to authenticate.')
       } else {
         setSubmitted(true)
       }
     } catch (err: any) {
-      setError(err?.message || 'An unexpected error occurred.')
+      console.error('Caught unexpected login error:', err)
+      setError(err?.message || JSON.stringify(err) || 'An unexpected error occurred.')
     } finally {
       setLoading(false)
     }
@@ -83,7 +88,7 @@ export default function LoginPage() {
         <p className="text-slate-400 text-sm mb-6">Enter your email to sign in or create an account via magic link.</p>
 
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">
+          <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm break-words">
             {errorMessage}
           </div>
         )}
