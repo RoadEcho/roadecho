@@ -14,7 +14,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [debugLog, setDebugLog] = useState<string>('')
 
-  // Check for error parameters passed back from the server confirmation route
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search)
     const errorParam = queryParams.get('error')
@@ -23,9 +22,13 @@ export default function LoginPage() {
     }
   }, [])
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault()
-    setDebugLog('1. Button clicked, starting handleLogin...')
+  async function handleLogin() {
+    setDebugLog('1. Button clicked!')
+
+    if (!email || !email.includes('@')) {
+      setError('Please enter a valid email address.')
+      return
+    }
     
     if (!agreedToTerms) {
       setError('You must agree to the Terms of Service and Privacy Policy to continue.')
@@ -36,9 +39,9 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      setDebugLog('2. Calling supabase.auth.signInWithOtp...')
-      
-      const { data, error: authError } = await supabase.auth.signInWithOtp({
+      setDebugLog('2. Calling Supabase OTP...')
+
+      const response = await supabase.auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true,
@@ -46,16 +49,18 @@ export default function LoginPage() {
         },
       })
 
-      setDebugLog(`3. Response received. Error: ${authError ? authError.message : 'None'}`)
+      setDebugLog(`3. Raw Response received.`)
 
-      if (authError) {
-        setError(authError.message)
+      if (response.error) {
+        // Force stringify the entire error object to inspect hidden properties
+        const errorString = JSON.stringify(response.error, Object.getOwnPropertyNames(response.error))
+        setError(`Supabase Error: ${errorString}`)
       } else {
         setSubmitted(true)
       }
     } catch (err: any) {
-      setDebugLog(`3. Caught exception: ${err?.message || JSON.stringify(err)}`)
-      setError(err?.message || 'An unexpected error occurred.')
+      const catchString = JSON.stringify(err, Object.getOwnPropertyNames(err))
+      setError(`Catch Error: ${catchString}`)
     } finally {
       setLoading(false)
     }
@@ -94,7 +99,7 @@ export default function LoginPage() {
         )}
 
         {error && (
-          <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm break-words">
+          <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-xs font-mono break-all">
             {error}
           </div>
         )}
@@ -104,7 +109,7 @@ export default function LoginPage() {
             Check your email for the magic login link!
           </div>
         ) : (
-          <form onSubmit={handleLogin} className="space-y-4">
+          <div className="space-y-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
                 Email Address
@@ -114,7 +119,6 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
                 className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
               />
             </div>
@@ -126,7 +130,6 @@ export default function LoginPage() {
                 id="login-terms"
                 checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
-                required
                 className="mt-0.5 accent-cyan-500 cursor-pointer"
               />
               <label htmlFor="login-terms" className="cursor-pointer leading-relaxed">
@@ -137,13 +140,14 @@ export default function LoginPage() {
             </div>
 
             <button
-              type="submit"
+              type="button"
+              onClick={handleLogin}
               disabled={loading}
               className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg shadow-lg transition-colors cursor-pointer disabled:opacity-50"
             >
               {loading ? 'Processing...' : 'Send Magic Link'}
             </button>
-          </form>
+          </div>
         )}
       </div>
     </div>
