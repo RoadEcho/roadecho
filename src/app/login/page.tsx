@@ -45,20 +45,34 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { error: signUpError, data } = await supabase.auth.signUp({
           email,
           password,
         })
         if (signUpError) throw signUpError
+
+        if (data?.user) {
+          await supabase.from('user_logins').insert([
+            { user_id: data.user.id, email: data.user.email }
+          ])
+        }
+
         alert('Account created successfully! You are now signed in.')
         router.push('/dashboard')
         router.refresh()
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        const { error: signInError, data } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
         if (signInError) throw signInError
+
+        if (data?.user) {
+          await supabase.from('user_logins').insert([
+            { user_id: data.user.id, email: data.user.email }
+          ])
+        }
+
         router.push('/dashboard')
         router.refresh()
       }
