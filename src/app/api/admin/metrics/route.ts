@@ -31,44 +31,48 @@ export async function GET(request: Request) {
 
     const [
       messagesRes,
-      vaultRes,
+      passesRes,
+      unlocksRes,
+      userPassesRes,
       sharesRes,
       referralsRes,
       profilesRes,
       subscriptionsRes,
       platesRes,
-      vaultLogsRes,
       sharesLogsRes,
       messagesLogsRes
     ] = await Promise.all([
       supabase.from('messages').select('*', { count: 'exact', head: true }),
-      supabase.from('passes').select('*', { count: 'exact', head: true }), // Correctly queries passes table
+      supabase.from('passes').select('*', { count: 'exact', head: true }),
+      supabase.from('unlocks').select('*', { count: 'exact', head: true }),
+      supabase.from('user_passes').select('*', { count: 'exact', head: true }),
       supabase.from('shares').select('*', { count: 'exact', head: true }),
       supabase.from('referrals').select('*', { count: 'exact', head: true }),
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }),
       supabase.from('messages').select('plate_hash', { count: 'exact', head: true }),
       
-      supabase.from('passes').select('*').order('created_at', { ascending: false }),
       supabase.from('shares').select('*').order('created_at', { ascending: false }),
       supabase.from('messages').select('*').order('created_at', { ascending: false })
     ]);
+
+    const totalUnlocksCount = (passesRes.count || 0) + (unlocksRes.count || 0) + (userPassesRes.count || 0);
 
     return NextResponse.json({ 
       success: true, 
       totalMessages: messagesRes.count || 0,
       platesMessaged: platesRes.count || messagesRes.count || 0,
-      totalUnlocks: vaultRes.count || 0,
+      totalUnlocks: totalUnlocksCount,
       totalSubscribers: subscriptionsRes.count || 0,
       totalShares: sharesRes.count || 0,
       totalReferrals: referralsRes.count || 0,
       totalAccounts: profilesRes.count || 0,
       breakdowns: {
-        vaultActivations: vaultLogsRes.data || [],
+        vaultActivations: passesRes.data || [],
         shares: sharesLogsRes.data || [],
         messages: messagesLogsRes.data || []
       },
-      unlocks: vaultLogsRes.data || [],
+      unlocks: passesRes.data || [],
       sharesList: sharesLogsRes.data || []
     });
   } catch (error: any) {
