@@ -70,38 +70,37 @@ export async function DELETE(
     }
 
     // 2. Comprehensive cleanup across all public tables using both ID and email
-    const cleanupQueries: Promise<any>[] = []
+    const tables = [
+      'user_plates',
+      'plate_vault',
+      'passes',
+      'subscriptions',
+      'unlocks',
+      'user_credits',
+      'user_logins',
+      'user_pass_vault',
+      'user_passes',
+      'user_milestone_claims',
+      'reward_events',
+      'shares'
+    ]
+
     const idTargets = [authUserId, rawId].filter(Boolean)
 
     for (const targetId of idTargets) {
-      cleanupQueries.push(
-        supabaseAdmin.from('user_plates').delete().eq('user_id', targetId),
-        supabaseAdmin.from('plate_vault').delete().eq('user_id', targetId),
-        supabaseAdmin.from('passes').delete().eq('user_id', targetId),
-        supabaseAdmin.from('subscriptions').delete().eq('user_id', targetId),
-        supabaseAdmin.from('unlocks').delete().eq('user_id', targetId),
-        supabaseAdmin.from('user_credits').delete().eq('user_id', targetId),
-        supabaseAdmin.from('user_logins').delete().eq('user_id', targetId),
-        supabaseAdmin.from('user_pass_vault').delete().eq('user_id', targetId),
-        supabaseAdmin.from('user_passes').delete().eq('user_id', targetId),
-        supabaseAdmin.from('user_milestone_claims').delete().eq('user_id', targetId),
-        supabaseAdmin.from('reward_events').delete().eq('user_id', targetId),
-        supabaseAdmin.from('shares').delete().eq('user_id', targetId),
-        supabaseAdmin.from('user_access').delete().eq('id', targetId),
-        supabaseAdmin.from('users').delete().eq('id', targetId),
-        supabaseAdmin.from('admin_users').delete().eq('id', targetId)
-      )
+      for (const table of tables) {
+        await supabaseAdmin.from(table).delete().eq('user_id', targetId)
+      }
+      await supabaseAdmin.from('user_access').delete().eq('id', targetId)
+      await supabaseAdmin.from('users').delete().eq('id', targetId)
+      await supabaseAdmin.from('admin_users').delete().eq('id', targetId)
     }
 
     if (userEmail) {
-      cleanupQueries.push(
-        supabaseAdmin.from('admin_users').delete().eq('email', userEmail),
-        supabaseAdmin.from('users').delete().eq('email', userEmail),
-        supabaseAdmin.from('user_access').delete().eq('email', userEmail)
-      )
+      await supabaseAdmin.from('admin_users').delete().eq('email', userEmail)
+      await supabaseAdmin.from('users').delete().eq('email', userEmail)
+      await supabaseAdmin.from('user_access').delete().eq('email', userEmail)
     }
-
-    await Promise.all(cleanupQueries)
 
     return NextResponse.json({ success: true, message: 'User completely purged from system' })
   } catch (err: any) {
