@@ -82,25 +82,22 @@ export async function GET(request: Request) {
     const referrals = referralsRes.data || []
     const totalSubscribers = subsRes.count || 0
 
-    // Combine all unlock/pass tables into a single unified array
-    const combinedUnlocks: { created_at: string }[] = []
+    // Combine all unlock/pass tables into a single unified array safely
+    const combinedUnlocks: { created_at: string }[] = [];
 
-    (passesRes.data || []).forEach(item => {
-      if (item.created_at) combinedUnlocks.push({ created_at: item.created_at })
-    })
-    (unlocksTableRes.data || []).forEach(item => {
-      if (item.created_at) combinedUnlocks.push({ created_at: item.created_at })
-    })
-    (userPassesRes.data || []).forEach(item => {
-      const ts = item.updated_at || item.created_at
-      if (ts) combinedUnlocks.push({ created_at: ts })
-    })
-    (passVaultRes.data || []).forEach(item => {
-      if ((item.available_passes ?? 0) > 0 || item.pass_expires_at) {
-        const ts = item.updated_at || item.created_at
-        if (ts) combinedUnlocks.push({ created_at: ts })
+    const rawUnlocks = [
+      ...(passesRes.data || []),
+      ...(unlocksTableRes.data || []),
+      ...(userPassesRes.data || []),
+      ...(passVaultRes.data || [])
+    ];
+
+    for (const item of rawUnlocks) {
+      const ts = item.created_at || item.updated_at;
+      if (ts) {
+        combinedUnlocks.push({ created_at: ts });
       }
-    })
+    }
 
     // Calculate unique plates with messages
     const uniquePlatesCount = new Set(messages.map(m => m.license_plate || m.plate_hash).filter(Boolean)).size
