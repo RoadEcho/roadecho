@@ -10,7 +10,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 export async function GET(request: Request) {
   try {
-    // 1. Verify Authentication Token from Header
     const authHeader = request.headers.get('authorization')
     if (!authHeader) {
       return NextResponse.json({ error: 'Unauthorized: Missing session token.' }, { status: 401 })
@@ -23,7 +22,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized: Invalid or expired session.' }, { status: 401 })
     }
 
-    // 2. Verify Admin Privileges Dynamically against admin_users table
     const { data: adminRecord, error: adminError } = await supabase
       .from('admin_users')
       .select('email')
@@ -34,7 +32,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access restricted.' }, { status: 403 })
     }
 
-    // 3. Fetch records for messages, all unlock sources, shares, referrals, and active subscriptions in parallel
     const [
       messagesRes, 
       passesRes, 
@@ -45,7 +42,7 @@ export async function GET(request: Request) {
       referralsRes, 
       subsRes
     ] = await Promise.all([
-      supabase.from('messages').select('license_plate, created_at'),
+      supabase.from('messages').select('plate_hash, license_plate, created_at'),
       supabase.from('passes').select('created_at, updated_at'),
       supabase.from('unlocks').select('created_at, updated_at'),
       supabase.from('user_passes').select('updated_at, created_at'),
@@ -82,9 +79,7 @@ export async function GET(request: Request) {
     const referrals = referralsRes.data || []
     const totalSubscribers = subsRes.count || 0
 
-    // Combine all unlock/pass tables safely with type assertion
     const combinedUnlocks: { created_at: string }[] = [];
-
     const rawUnlocks = [
       ...(passesRes.data || []),
       ...(unlocksTableRes.data || []),
@@ -100,10 +95,9 @@ export async function GET(request: Request) {
       }
     }
 
-    // Calculate unique plates with messages
-    const uniquePlatesCount = new Set(messages.map(m => m.license_plate).filter(Boolean)).size
+    // Securely count unique plates using cryptographic plate_hash with fallback
+    const uniquePlatesCount = new Set(messages.map(m => m.plate_hash || m.license_plate).filter(Boolean)).size
 
-    // Helper to group by timeframe
     const groupStats = (items: { created_at: string }[]) => {
       const stats = {
         daily: {} as Record<string, number>,
