@@ -19,7 +19,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized: Invalid session.' }, { status: 401 });
     }
 
-    // Verify admin privileges against the admin_users table
     const { data: adminRecord, error: adminError } = await supabase
       .from('admin_users')
       .select('email')
@@ -30,7 +29,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access required.' }, { status: 403 });
     }
 
-    // Fetch core metric counts and raw log data in parallel
     const [
       messagesRes,
       vaultRes,
@@ -44,17 +42,16 @@ export async function GET(request: Request) {
       messagesLogsRes
     ] = await Promise.all([
       supabase.from('messages').select('*', { count: 'exact', head: true }),
-      supabase.from('vault_activations').select('*', { count: 'exact', head: true }), // Correctly queries vault_activations[span_4](start_span)[span_4](end_span)
+      supabase.from('passes').select('*', { count: 'exact', head: true }), // Correctly queries passes table
       supabase.from('shares').select('*', { count: 'exact', head: true }),
       supabase.from('referrals').select('*', { count: 'exact', head: true }),
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }),
       supabase.from('messages').select('plate_hash', { count: 'exact', head: true }),
       
-      // Fetch raw logs for activity breakdowns
-      supabase.from('vault_activations').select('created_at'),
-      supabase.from('shares').select('created_at, share_type'),
-      supabase.from('messages').select('created_at')
+      supabase.from('passes').select('*').order('created_at', { ascending: false }),
+      supabase.from('shares').select('*').order('created_at', { ascending: false }),
+      supabase.from('messages').select('*').order('created_at', { ascending: false })
     ]);
 
     return NextResponse.json({ 
@@ -71,8 +68,8 @@ export async function GET(request: Request) {
         shares: sharesLogsRes.data || [],
         messages: messagesLogsRes.data || []
       },
-      messagesBreakdown: { daily: {}, weekly: {}, monthly: {}, yearly: {} },
-      unlocksBreakdown: { daily: {}, weekly: {}, monthly: {}, yearly: {} }
+      unlocks: vaultLogsRes.data || [],
+      sharesList: sharesLogsRes.data || []
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
