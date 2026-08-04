@@ -44,7 +44,7 @@ export async function GET(request: Request) {
       messagesLogsRes
     ] = await Promise.all([
       supabase.from('messages').select('*', { count: 'exact', head: true }),
-      supabase.from('vault_activations').select('*', { count: 'exact', head: true }), // Fixed to correct table
+      supabase.from('vault_activations').select('*', { count: 'exact', head: true }), // Correctly queries vault_activations[span_4](start_span)[span_4](end_span)
       supabase.from('shares').select('*', { count: 'exact', head: true }),
       supabase.from('referrals').select('*', { count: 'exact', head: true }),
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
