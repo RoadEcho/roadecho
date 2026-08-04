@@ -32,15 +32,15 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error: authError } = await supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/confirm`,
       },
     })
 
-    if (error) {
-      setError(error.message)
+    if (authError) {
+      setError(authError.message)
       setLoading(false)
     } else {
       setSubmitted(true)
@@ -73,7 +73,11 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold mb-2">RoadEcho Login</h1>
         <p className="text-slate-400 text-sm mb-6">Enter your email to sign in or create an account via magic link.</p>
 
-        {error && <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">{error}</div>}
+        {error && (
+          <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">
+            {error}
+          </div>
+        )}
 
         {submitted ? (
           <div className="p-4 bg-emerald-950/50 border border-emerald-800 rounded-lg text-emerald-300 text-sm text-center">
