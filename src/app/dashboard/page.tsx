@@ -132,6 +132,18 @@ export default function VaultDashboard() {
         if (vaultData) {
           setAvailablePasses(vaultData.available_passes || 0)
           setPassExpiresAt(vaultData.pass_expires_at || null)
+        } else {
+          // Lazy-provision vault record for brand new users
+          const { data: newVault } = await supabase
+            .from('user_pass_vault')
+            .insert([{ user_id: currentUserId, available_passes: 0 }])
+            .select('available_passes, pass_expires_at')
+            .single()
+
+          if (newVault) {
+            setAvailablePasses(newVault.available_passes || 0)
+            setPassExpiresAt(newVault.pass_expires_at || null)
+          }
         }
       } catch (e) {
         console.error('Vault pass fetch warning:', e)
