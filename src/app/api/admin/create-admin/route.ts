@@ -37,9 +37,9 @@ export async function POST(request: Request) {
 
     const cleanEmail = email.trim().toLowerCase()
 
-    // 1. Invite user via Supabase Auth (generates password setup email)
+    // 1. Invite user via Supabase Auth (redirects to password setup page)
     const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(cleanEmail, {
-      redirectTo: `${new URL(request.url).origin}/admin/login`
+      redirectTo: `${new URL(request.url).origin}/admin/update-password`
     })
 
     if (inviteError) throw inviteError
