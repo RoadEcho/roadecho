@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia' as any,
 })
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -27,6 +30,8 @@ export async function POST(request: Request) {
   }
 
   const session = event.data.object as Stripe.Checkout.Session
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://roadecho.vercel.app'
+  const logoUrl = `${siteUrl}/logo.PNG`
 
   // 1. Handle Checkout Session Completed (Passes, Subscriptions & Referrals)
   if (event.type === 'checkout.session.completed') {
@@ -98,6 +103,31 @@ export async function POST(request: Request) {
         { user_id: referrerId, reward_type: 'subscription_bonus' }
       ])
     }
+
+    // Send Purchase Confirmation & Receipt Email
+    const customerEmail = session.customer_details?.email || session.customer_email
+    if (customerEmail) {
+      try {
+        await resend.emails.send({
+          from: 'RoadEcho <onboarding@resend.dev>',
+          to: [customerEmail],
+          subject: '[RoadEcho] Purchase Confirmation & Receipt',
+          text: `Thank you for your purchase with RoadEcho. Your payment has been successfully processed. View your dashboard: ${siteUrl}/dashboard`,
+          html: `
+            <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
+              <div style="text-align: center; margin-bottom: 20px;">
+                <img src="${logoUrl}" alt="RoadEcho Logo" style="height: 48px; object-fit: contain;" />
+              </div>
+              <h2 style="color: #06b6d4; margin-top: 0; font-size: 18px;">Purchase Successful!</h2>
+              <p>Thank you for choosing RoadEcho. Your payment has been successfully processed and your vault passes or subscription have been updated.</p>
+              <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #06b6d4; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 12px;">Open Dashboard</a>
+            </div>
+          `
+        })
+      } catch (emailErr) {
+        console.error('Failed to send purchase confirmation email:', emailErr)
+      }
+    }
   }
 
   // 2. Handle Subscription Updates (Renewals/Changes)
@@ -114,7 +144,7 @@ export async function POST(request: Request) {
     })
   }
 
-  // 3. Handle Subscription Cancellations
+  // 3. Handle Subscription Cancellations & Expirations
   if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object as any
 
@@ -122,6 +152,32 @@ export async function POST(request: Request) {
       status: 'canceled',
       updated_at: new Date().toISOString(),
     }).eq('stripe_subscription_id', subscription.id)
+
+    // Send Subscription Expired Email
+    try {
+      const customerId = subscription.customer as string
+      const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer
+      if (customer && !customer.deleted && customer.email) {
+        await resend.emails.send({
+          from: 'RoadEcho <onboarding@resend.dev>',
+          to: [customer.email],
+          subject: '[RoadEcho] Your Subscription Has Expired',
+          text: `Your RoadEcho subscription has expired. Renew anytime from your dashboard: ${siteUrl}/dashboard`,
+          html: `
+            <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
+              <div style="text-align: center; margin-bottom: 20px;">
+                <img src="${logoUrl}" alt="RoadEcho Logo" style="height: 48px; object-fit: contain;" />
+              </div>
+              <h2 style="color: #f43f5e; margin-top: 0; font-size: 18px;">Subscription Expired</h2>
+              <p>Your RoadEcho subscription has expired. You can renew your subscription anytime from your dashboard to keep your active passes and features running smoothly.</p>
+              <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #06b6d4; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 12px;">Renew Subscription</a>
+            </div>
+          `
+        })
+      }
+    } catch (emailErr) {
+      console.error('Failed to send subscription expiration email:', emailErr)
+    }
   }
 
   return NextResponse.json({ received: true })
