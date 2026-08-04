@@ -8,11 +8,11 @@ import Link from 'next/link'
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [agreedToTerms, setAgreedToTerms] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [debugLog, setDebugLog] = useState<string>('')
+  const [isSignUp, setIsSignUp] = useState(false)
 
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search)
@@ -22,11 +22,16 @@ export default function LoginPage() {
     }
   }, [])
 
-  async function handleLogin() {
-    setDebugLog('1. Button clicked!')
+  async function handleAuth(e: React.FormEvent) {
+    e.preventDefault()
 
     if (!email || !email.includes('@')) {
       setError('Please enter a valid email address.')
+      return
+    }
+
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters long.')
       return
     }
     
@@ -39,28 +44,26 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      setDebugLog('2. Calling Supabase OTP...')
-
-      const response = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
-        },
-      })
-
-      setDebugLog(`3. Raw Response received.`)
-
-      if (response.error) {
-        // Force stringify the entire error object to inspect hidden properties
-        const errorString = JSON.stringify(response.error, Object.getOwnPropertyNames(response.error))
-        setError(`Supabase Error: ${errorString}`)
+      if (isSignUp) {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+        })
+        if (signUpError) throw signUpError
+        alert('Account created successfully! You are now signed in.')
+        router.push('/dashboard')
+        router.refresh()
       } else {
-        setSubmitted(true)
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+        if (signInError) throw signInError
+        router.push('/dashboard')
+        router.refresh()
       }
     } catch (err: any) {
-      const catchString = JSON.stringify(err, Object.getOwnPropertyNames(err))
-      setError(`Catch Error: ${catchString}`)
+      setError(err.message || 'Authentication failed. Please check your credentials.')
     } finally {
       setLoading(false)
     }
@@ -89,14 +92,9 @@ export default function LoginPage() {
         </div>
 
         <h1 className="text-2xl font-bold mb-2">RoadEcho Login</h1>
-        <p className="text-slate-400 text-sm mb-6">Enter your email to sign in or create an account via magic link.</p>
-
-        {/* Live Debug Box */}
-        {debugLog && (
-          <div className="mb-4 p-3 bg-blue-950/60 border border-blue-800 rounded-lg text-blue-200 text-xs font-mono break-all">
-            <strong>Debug:</strong> {debugLog}
-          </div>
-        )}
+        <p className="text-slate-400 text-sm mb-6">
+          {isSignUp ? 'Create an account with your email and password.' : 'Sign in to access your dashboard.'}
+        </p>
 
         {error && (
           <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-xs font-mono break-all">
@@ -104,51 +102,70 @@ export default function LoginPage() {
           </div>
         )}
 
-        {submitted ? (
-          <div className="p-4 bg-emerald-950/50 border border-emerald-800 rounded-lg text-emerald-300 text-sm text-center">
-            Check your email for the magic login link!
+        <form onSubmit={handleAuth} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Email Address
+            </label>
+            <input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
+            />
           </div>
-        ) : (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
-              />
-            </div>
 
-            {/* Terms & Privacy Checkbox */}
-            <div className="flex items-start space-x-2 text-xs text-slate-400 pt-1">
-              <input
-                type="checkbox"
-                id="login-terms"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-0.5 accent-cyan-500 cursor-pointer"
-              />
-              <label htmlFor="login-terms" className="cursor-pointer leading-relaxed">
-                I agree to the{' '}
-                <Link href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Terms of Service</Link> and{' '}
-                <Link href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Privacy Policy</Link>.
-              </label>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleLogin}
-              disabled={loading}
-              className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg shadow-lg transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {loading ? 'Processing...' : 'Send Magic Link'}
-            </button>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Password
+            </label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors"
+            />
           </div>
-        )}
+
+          {/* Terms & Privacy Checkbox */}
+          <div className="flex items-start space-x-2 text-xs text-slate-400 pt-1">
+            <input
+              type="checkbox"
+              id="login-terms"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-0.5 accent-cyan-500 cursor-pointer"
+            />
+            <label htmlFor="login-terms" className="cursor-pointer leading-relaxed">
+              I agree to the{' '}
+              <Link href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Terms of Service</Link> and{' '}
+              <Link href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Privacy Policy</Link>.
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg shadow-lg transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {loading ? 'Processing...' : isSignUp ? 'Sign Up' : 'Sign In'}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center text-sm">
+          <button
+            type="button"
+            onClick={() => setIsSignUp(!isSignUp)}
+            className="text-cyan-400 hover:underline cursor-pointer"
+          >
+            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+          </button>
+        </div>
+
       </div>
     </div>
   )
