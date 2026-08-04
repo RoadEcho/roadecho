@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access required.' }, { status: 403 });
     }
 
-    // Fetch counts and raw data in parallel across all relevant tables
+    // Fetch all counts and table data in parallel across all unlock sources
     const [
       messagesRes,
       sharesRes,
@@ -59,25 +59,43 @@ export async function GET(request: Request) {
       supabase.from('messages').select('*').order('created_at', { ascending: false })
     ]);
 
-    // Combine all unlock/pass logs into a single unified array with normalized timestamps
+    // Build the unified unlocks list matching the directory route exactly
     const allUnlocks: any[] = [];
 
-    (passesRes.data || []).forEach((item) => {
-      allUnlocks.push({ ...item, created_at: item.created_at || new Date().toISOString() });
+    (passesRes.data || []).forEach((u: any) => {
+      allUnlocks.push({
+        id: `pass-${u.id}`,
+        created_at: u.created_at || new Date().toISOString(),
+        ...u
+      });
     });
-    (unlocksRes.data || []).forEach((item) => {
-      allUnlocks.push({ ...item, created_at: item.created_at || new Date().toISOString() });
+
+    (unlocksRes.data || []).forEach((u: any) => {
+      allUnlocks.push({
+        id: `unlock-${u.id}`,
+        created_at: u.created_at || new Date().toISOString(),
+        ...u
+      });
     });
-    (userPassesRes.data || []).forEach((item) => {
-      allUnlocks.push({ ...item, created_at: item.updated_at || item.created_at || new Date().toISOString() });
+
+    (userPassesRes.data || []).forEach((u: any) => {
+      allUnlocks.push({
+        id: `userpass-${u.user_id}`,
+        created_at: u.updated_at || u.created_at || new Date().toISOString(),
+        ...u
+      });
     });
-    (passVaultRes.data || []).forEach((item) => {
-      if (item.available_passes > 0 || item.pass_expires_at) {
-        allUnlocks.push({ ...item, created_at: item.updated_at || item.created_at || new Date().toISOString() });
+
+    (passVaultRes.data || []).forEach((u: any) => {
+      if (u.available_passes > 0 || u.pass_expires_at) {
+        allUnlocks.push({
+          id: `vault-${u.user_id}`,
+          created_at: u.updated_at || u.created_at || new Date().toISOString(),
+          ...u
+        });
       }
     });
 
-    // Sort combined unlocks by date descending
     allUnlocks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return NextResponse.json({ 
