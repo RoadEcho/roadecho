@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -29,7 +32,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access required.' }, { status: 403 });
     }
 
-    // Fetch all counts and table data in parallel across all unlock sources
     const [
       messagesRes,
       sharesRes,
@@ -54,7 +56,6 @@ export async function GET(request: Request) {
       supabase.from('messages').select('plate_hash', { count: 'exact', head: true })
     ]);
 
-    // Build the unified unlocks list matching the directory route exactly
     const combinedUnlocks: any[] = [];
 
     (passesRes.data || []).forEach((u: any) => {
@@ -100,7 +101,7 @@ export async function GET(request: Request) {
       success: true, 
       totalMessages: messagesRes.count || 0,
       platesMessaged: platesCountRes.count || messagesRes.count || 0,
-      totalUnlocks: combinedUnlocks.length, // Evaluates to 3 based on actual database rows
+      totalUnlocks: combinedUnlocks.length,
       totalSubscribers: subscriptionsRes.count || 0,
       totalShares: sharesRes.count || 0,
       totalReferrals: referralsRes.count || 0,
