@@ -29,50 +29,72 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access required.' }, { status: 403 });
     }
 
+    // Fetch counts and raw data in parallel across all relevant tables
     const [
       messagesRes,
-      passesRes,
-      unlocksRes,
-      userPassesRes,
       sharesRes,
       referralsRes,
       profilesRes,
       subscriptionsRes,
       platesRes,
+      passesRes,
+      unlocksRes,
+      userPassesRes,
+      passVaultRes,
       sharesLogsRes,
       messagesLogsRes
     ] = await Promise.all([
       supabase.from('messages').select('*', { count: 'exact', head: true }),
-      supabase.from('passes').select('*', { count: 'exact', head: true }),
-      supabase.from('unlocks').select('*', { count: 'exact', head: true }),
-      supabase.from('user_passes').select('*', { count: 'exact', head: true }),
       supabase.from('shares').select('*', { count: 'exact', head: true }),
       supabase.from('referrals').select('*', { count: 'exact', head: true }),
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }),
       supabase.from('messages').select('plate_hash', { count: 'exact', head: true }),
       
+      supabase.from('passes').select('*').order('created_at', { ascending: false }),
+      supabase.from('unlocks').select('*').order('created_at', { ascending: false }),
+      supabase.from('user_passes').select('*').order('updated_at', { ascending: false }),
+      supabase.from('user_pass_vault').select('*').order('updated_at', { ascending: false }),
       supabase.from('shares').select('*').order('created_at', { ascending: false }),
       supabase.from('messages').select('*').order('created_at', { ascending: false })
     ]);
 
-    const totalUnlocksCount = (passesRes.count || 0) + (unlocksRes.count || 0) + (userPassesRes.count || 0);
+    // Combine all unlock/pass logs into a single unified array with normalized timestamps
+    const allUnlocks: any[] = [];
+
+    (passesRes.data || []).forEach((item) => {
+      allUnlocks.push({ ...item, created_at: item.created_at || new Date().toISOString() });
+    });
+    (unlocksRes.data || []).forEach((item) => {
+      allUnlocks.push({ ...item, created_at: item.created_at || new Date().toISOString() });
+    });
+    (userPassesRes.data || []).forEach((item) => {
+      allUnlocks.push({ ...item, created_at: item.updated_at || item.created_at || new Date().toISOString() });
+    });
+    (passVaultRes.data || []).forEach((item) => {
+      if (item.available_passes > 0 || item.pass_expires_at) {
+        allUnlocks.push({ ...item, created_at: item.updated_at || item.created_at || new Date().toISOString() });
+      }
+    });
+
+    // Sort combined unlocks by date descending
+    allUnlocks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return NextResponse.json({ 
       success: true, 
       totalMessages: messagesRes.count || 0,
       platesMessaged: platesRes.count || messagesRes.count || 0,
-      totalUnlocks: totalUnlocksCount,
+      totalUnlocks: allUnlocks.length,
       totalSubscribers: subscriptionsRes.count || 0,
       totalShares: sharesRes.count || 0,
       totalReferrals: referralsRes.count || 0,
       totalAccounts: profilesRes.count || 0,
       breakdowns: {
-        vaultActivations: passesRes.data || [],
+        vaultActivations: allUnlocks,
         shares: sharesLogsRes.data || [],
         messages: messagesLogsRes.data || []
       },
-      unlocks: passesRes.data || [],
+      unlocks: allUnlocks,
       sharesList: sharesLogsRes.data || []
     });
   } catch (error: any) {
