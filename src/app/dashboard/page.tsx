@@ -47,6 +47,7 @@ export default function VaultDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copiedRef, setCopiedRef] = useState(false)
+  const [copiedShare, setCopiedShare] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -227,6 +228,43 @@ export default function VaultDashboard() {
     }
   }
 
+  const referralLink = userId ? `https://roadecho.vercel.app/?ref=${userId}` : ''
+
+  const handleShare = async () => {
+    try {
+      await fetch('/api/shares', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, user_id: userId, email: userEmail, platform: 'web_share' })
+      })
+    } catch (err) {
+      console.error('Failed to register share:', err)
+    }
+
+    const shareUrl = referralLink || (userId ? `https://roadecho.vercel.app/?ref=${userId}` : 'https://roadecho.vercel.app')
+    const shareText = `Check out RoadEcho — the safe, anonymous way to message any vehicle license plate! 🚗💨\n\n${shareUrl}`
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'RoadEcho - Secure Plate Messaging',
+          text: shareText,
+          url: shareUrl,
+        })
+      } catch {
+        copyToClipboardShare(shareText)
+      }
+    } else {
+      copyToClipboardShare(shareText)
+    }
+  }
+
+  const copyToClipboardShare = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopiedShare(true)
+    setTimeout(() => setCopiedShare(false), 3000)
+  }
+
   async function handleClaimPlate(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -303,7 +341,6 @@ export default function VaultDashboard() {
     }
   }
 
-  const referralLink = userId ? `https://roadecho.vercel.app/?ref=${userId}` : ''
   const isPassActive = passExpiresAt && new Date(passExpiresAt) > new Date()
 
   if (loading) {
@@ -393,7 +430,6 @@ export default function VaultDashboard() {
                 setCopiedRef(true)
                 setTimeout(() => setCopiedRef(false), 3000)
 
-                // Log the share event to admin analytics
                 try {
                   await fetch('/api/shares', {
                     method: 'POST',
@@ -415,6 +451,19 @@ export default function VaultDashboard() {
               {copiedRef ? '✓ Copied!' : 'Copy Link'}
             </button>
           </div>
+
+          <button
+            onClick={handleShare}
+            className="w-full mt-2 py-2.5 px-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 text-xs"
+          >
+            <span>📤 Share RoadEcho with Friends</span>
+          </button>
+
+          {copiedShare && (
+            <p className="text-xs text-emerald-400 text-center font-medium mt-1">
+              ✓ Link copied &amp; logged! Ready to paste.
+            </p>
+          )}
         </div>
       </div>
 
