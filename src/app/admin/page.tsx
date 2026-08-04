@@ -255,7 +255,7 @@ export default function AdminDashboard() {
     }
   }
 
-  async function handleRemoveAdmin(id: string) {
+  async function handleRemoveAdmin(emailToRemove: string) {
     setError(null)
     setSuccess(null)
 
@@ -263,16 +263,20 @@ export default function AdminDashboard() {
     if (!session) return
 
     try {
-      const res = await fetch(`/api/admin/users/${id}`, {
+      const res = await fetch('/api/admin/remove', {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}` 
+        },
+        body: JSON.stringify({ email: emailToRemove })
       })
 
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to remove admin')
 
+      setAdmins(prev => prev.filter(adm => adm.email !== emailToRemove))
       setSuccess('Admin removed successfully.')
-      checkAdminAndFetch()
     } catch (err: any) {
       setError(err.message)
     }
@@ -491,7 +495,7 @@ export default function AdminDashboard() {
                 <span className="font-mono text-cyan-300 truncate pr-2">{adm.email}</span>
                 <button
                   type="button"
-                  onClick={() => handleRemoveAdmin(adm.id)}
+                  onClick={() => handleRemoveAdmin(adm.email)}
                   className="text-red-400 hover:text-red-300 transition cursor-pointer shrink-0"
                 >
                   Remove
