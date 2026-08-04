@@ -30,16 +30,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Admin access required.' }, { status: 403 });
     }
 
-    // FIXED: Query the correct 'vault_activations' table
+    // Query the correct 'passes' table from your database schema
     const { data: unlocks, error } = await supabase
-      .from('vault_activations')
+      .from('passes')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(50);
 
     if (error) throw error;
 
-    // Fetch auth users safely
+    // Fetch auth users safely to map user_id to email
     const { data: authData } = await supabase.auth.admin.listUsers();
     const authUsers = authData?.users || [];
     
@@ -50,8 +50,7 @@ export async function GET(request: Request) {
     const now = new Date();
 
     const formattedUnlocks = (unlocks || []).map((u: any) => {
-      const createdAt = new Date(u.created_at || u.timestamp || Date.now());
-      
+      const createdAt = new Date(u.created_at || Date.now());
       const expiresAt = u.expires_at 
         ? new Date(u.expires_at) 
         : new Date(createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -72,14 +71,14 @@ export async function GET(request: Request) {
 
       return {
         id: u.id,
-        email: emailMap.get(u.user_id) || u.email || 'Customer Pass',
-        licensePlate: u.license_plate || u.plate || 'Vault Unlock',
+        email: emailMap.get(u.user_id) || 'Customer Pass',
+        licensePlate: u.plate || 'Vault Unlock',
         createdAt: createdAt.toISOString(),
         expiresAt: expiresAt.toISOString(),
         timeLeft: timeLeftFormatted,
         isExpired: isExpired,
-        status: u.status || (isExpired ? 'Expired' : 'Active'),
-        transactionRef: u.stripe_session_id || u.transaction_ref || 'N/A'
+        status: isExpired ? 'Expired' : 'Active',
+        transactionRef: u.stripe_session_id || 'N/A'
       };
     });
 
