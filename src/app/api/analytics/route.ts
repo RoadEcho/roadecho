@@ -46,8 +46,8 @@ export async function GET(request: Request) {
       subsRes
     ] = await Promise.all([
       supabase.from('messages').select('license_plate, plate_hash, created_at'),
-      supabase.from('passes').select('created_at'),
-      supabase.from('unlocks').select('created_at'),
+      supabase.from('passes').select('created_at, updated_at'),
+      supabase.from('unlocks').select('created_at, updated_at'),
       supabase.from('user_passes').select('updated_at, created_at'),
       supabase.from('user_pass_vault').select('available_passes, pass_expires_at, updated_at, created_at'),
       supabase.from('shares').select('created_at'),
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
     const referrals = referralsRes.data || []
     const totalSubscribers = subsRes.count || 0
 
-    // Combine all unlock/pass tables into a single unified array safely
+    // Combine all unlock/pass tables safely with type assertion
     const combinedUnlocks: { created_at: string }[] = [];
 
     const rawUnlocks = [
@@ -92,7 +92,8 @@ export async function GET(request: Request) {
       ...(passVaultRes.data || [])
     ];
 
-    for (const item of rawUnlocks) {
+    for (const rawItem of rawUnlocks) {
+      const item = rawItem as any;
       const ts = item.created_at || item.updated_at;
       if (ts) {
         combinedUnlocks.push({ created_at: ts });
