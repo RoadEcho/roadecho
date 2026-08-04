@@ -37,6 +37,7 @@ export default function LoginPage() {
       const { error: authError } = await supabase.auth.signInWithOtp({
         email,
         options: {
+          shouldCreateUser: true, // Crucial: forces user creation/signup on first entry
           emailRedirectTo: `${window.location.origin}/auth/confirm`,
         },
       })
