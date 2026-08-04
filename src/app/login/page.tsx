@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [debugLog, setDebugLog] = useState<string>('')
 
   // Check for error parameters passed back from the server confirmation route
   useEffect(() => {
@@ -24,6 +25,7 @@ export default function LoginPage() {
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
+    setDebugLog('1. Button clicked, starting handleLogin...')
     
     if (!agreedToTerms) {
       setError('You must agree to the Terms of Service and Privacy Policy to continue.')
@@ -34,33 +36,30 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      console.log('Attempting sign in with OTP for:', email)
-
+      setDebugLog('2. Calling supabase.auth.signInWithOtp...')
+      
       const { data, error: authError } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: true, // Crucial: forces user creation/signup on first entry
+          shouldCreateUser: true,
           emailRedirectTo: `${window.location.origin}/auth/confirm`,
         },
       })
 
-      console.log('Supabase OTP response:', { data, authError })
+      setDebugLog(`3. Response received. Error: ${authError ? authError.message : 'None'}`)
 
       if (authError) {
-        setError(authError.message || 'Failed to authenticate.')
+        setError(authError.message)
       } else {
         setSubmitted(true)
       }
     } catch (err: any) {
-      console.error('Caught unexpected login error:', err)
-      setError(err?.message || JSON.stringify(err) || 'An unexpected error occurred.')
+      setDebugLog(`3. Caught exception: ${err?.message || JSON.stringify(err)}`)
+      setError(err?.message || 'An unexpected error occurred.')
     } finally {
       setLoading(false)
     }
   }
-
-  // Ensure error is strictly a renderable non-empty string, filtering out any accidental objects
-  const errorMessage = typeof error === 'string' && error.trim() !== '' && error !== '{}' ? error : null
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-slate-950 text-white">
@@ -87,9 +86,16 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold mb-2">RoadEcho Login</h1>
         <p className="text-slate-400 text-sm mb-6">Enter your email to sign in or create an account via magic link.</p>
 
-        {errorMessage && (
+        {/* Live Debug Box */}
+        {debugLog && (
+          <div className="mb-4 p-3 bg-blue-950/60 border border-blue-800 rounded-lg text-blue-200 text-xs font-mono break-all">
+            <strong>Debug:</strong> {debugLog}
+          </div>
+        )}
+
+        {error && (
           <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm break-words">
-            {errorMessage}
+            {error}
           </div>
         )}
 
