@@ -92,12 +92,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Database Error: ${dbError.message}` }, { status: 500 });
     }
 
-    // 6. Find if the plate is claimed to notify the owner
+    // 6. Find if the plate is claimed to notify the owner (checking both clean plate and hash with state)
     let ownerEmail: string | null = null;
     const { data: plateOwnerData } = await supabase
       .from('user_plates')
       .select('user_id')
-      .eq('plate_number', plateHash)
+      .or(`plate_number.eq.${cleanPlate},plate_number.eq.${plateHash}`)
+      .eq('state', cleanState)
       .maybeSingle();
 
     if (plateOwnerData?.user_id) {
