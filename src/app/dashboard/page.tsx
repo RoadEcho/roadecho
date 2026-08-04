@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 
 interface Plate {
@@ -30,6 +31,7 @@ interface Submission {
 }
 
 export default function VaultDashboard() {
+  const router = useRouter()
   const [plates, setPlates] = useState<Plate[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [submissions, setSubmissions] = useState<Submission[]>([])
@@ -59,7 +61,7 @@ export default function VaultDashboard() {
         if (!isMounted) return
 
         if (sessionError || !session) {
-          window.location.href = '/login'
+          router.push('/login')
           return
         }
 
@@ -81,7 +83,7 @@ export default function VaultDashboard() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [router])
 
   // Live countdown timer effect
   useEffect(() => {
@@ -180,13 +182,19 @@ export default function VaultDashboard() {
     }
   }
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
+
   const handleActivatePass = async () => {
     if (!userId) return
     setError(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
-        window.location.href = '/login'
+        router.push('/login')
         return
       }
 
@@ -290,7 +298,7 @@ export default function VaultDashboard() {
 
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
-      window.location.href = '/login'
+      router.push('/login')
       return
     }
 
@@ -397,9 +405,17 @@ export default function VaultDashboard() {
       <p className="text-slate-400 text-sm mb-4">Claim up to 3 license plates and view your complete activity history.</p>
 
       {userEmail && (
-        <div className="mb-6 inline-flex items-center gap-2 px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-full text-xs text-slate-300">
-          <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-          Logged in as: <span className="font-mono text-cyan-300">{userEmail}</span>
+        <div className="mb-6 flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl flex-wrap gap-3">
+          <div className="inline-flex items-center gap-2 text-xs text-slate-300">
+            <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+            Logged in as: <span className="font-mono text-cyan-300">{userEmail}</span>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition cursor-pointer"
+          >
+            Sign Out
+          </button>
         </div>
       )}
 
