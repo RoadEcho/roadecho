@@ -61,6 +61,14 @@ export default function AdminLoginPage() {
         throw new Error('Access denied. This account is not authorized as an administrator.')
       }
 
+      // Record admin login into user_logins so it increments Total Logins
+      if (data.user) {
+        await supabase.from('user_logins').insert({
+          user_id: data.user.id,
+          email: data.user.email,
+        })
+      }
+
       window.location.href = '/admin'
     } catch (err: any) {
       setError(err.message || 'Failed to sign in.')
@@ -76,6 +84,23 @@ export default function AdminLoginPage() {
     try {
       const { error: updateError } = await supabase.auth.updateUser({ password })
       if (updateError) throw updateError
+
+      // Record login upon setting password for invited admin
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        const { data: adminRecord } = await supabase
+          .from('admin_users')
+          .select('email')
+          .eq('email', session.user.email?.toLowerCase())
+          .single()
+
+        if (adminRecord) {
+          await supabase.from('user_logins').insert({
+            user_id: session.user.id,
+            email: session.user.email,
+          })
+        }
+      }
 
       window.location.href = '/admin'
     } catch (err: any) {
