@@ -278,6 +278,36 @@ export default function AdminDashboard() {
     }
   }
 
+  async function handleDeleteUser(userId: string) {
+    if (!confirm('Are you sure you want to permanently delete this user account? This action cannot be undone.')) {
+      return
+    }
+
+    setError(null)
+    setSuccess(null)
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      router.push('/admin/login')
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      })
+
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to delete user')
+
+      setSuccess('User deleted successfully.')
+      checkAdminAndFetch()
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete user')
+    }
+  }
+
   if (loading) return <div className="p-10 text-white text-center bg-slate-950 min-h-screen">Verifying secure admin access...</div>
   if (error && !data) return <div className="p-10 text-red-400 text-center bg-slate-950 min-h-screen">Access Denied: {error}</div>
 
@@ -562,10 +592,19 @@ export default function AdminDashboard() {
             {userStats?.users && userStats.users.length > 0 ? (
               userStats.users.map(u => (
                 <div key={u.id} className="flex justify-between items-center p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs">
-                  <span className="font-medium text-white truncate max-w-[160px]">{u.email}</span>
-                  <span className="text-[11px] text-slate-400 font-mono">
-                    Joined: {new Date(u.createdAt).toLocaleDateString()}
-                  </span>
+                  <div>
+                    <span className="font-medium text-white block max-w-[160px] sm:max-w-xs truncate">{u.email}</span>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      Joined: {new Date(u.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteUser(u.id)}
+                    className="px-2.5 py-1 bg-red-950 hover:bg-red-900 text-red-300 border border-red-800 rounded-md font-semibold transition cursor-pointer shrink-0"
+                  >
+                    Delete
+                  </button>
                 </div>
               ))
             ) : (
