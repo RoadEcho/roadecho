@@ -101,7 +101,7 @@ export async function GET(request: Request) {
       success: true, 
       totalMessages: messagesLogs.length,
       platesMessaged: platesCountRes.count || messagesLogs.length,
-      totalUnlocks: actualUnlocks.length, // Updated to correctly count all combined passes and unlocks
+      totalUnlocks: actualUnlocks.length, // Correctly counts all combined passes and unlocks
       totalLogins: vaultLogins.length,
       totalSubscribers: subscriptionsRes.count || 0,
       totalShares: sharesRes.count || 0,
