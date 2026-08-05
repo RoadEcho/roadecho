@@ -36,6 +36,19 @@ export async function POST(request: Request) {
     // 1. Generate Zero-Knowledge Cryptographic Hash (DPPA Shield validation)
     const plateHash = getPlateHash(cleanPlate, cleanState, cleanCountry);
 
+    // --- DEDUPLICATION GUARD ---
+    // Check if this exact plate hash already exists for this user to prevent double-click race conditions
+    const { data: existingPlate } = await supabase
+      .from('user_plates')
+      .select('created_at')
+      .eq('user_id', user.id)
+      .eq('plate_number', plateHash)
+      .maybeSingle();
+
+    if (existingPlate) {
+      return NextResponse.json({ error: 'This plate is already claimed.' }, { status: 400 });
+    }
+
     // 2. Check limit (max 3 plates per user)
     const { count, error: countError } = await supabase
       .from('user_plates')
@@ -67,7 +80,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
-    // 4. Send Confirmation and Audit Emails via Resend
+    // 4. Send Confirmation and Audit Emails via Resend (Guaranteed to execute only once per unique claim)
     const dashboardUrl = 'https://roadecho.vercel.app/dashboard';
     const adminDashboardUrl = 'https://roadecho.vercel.app/admin';
     const logoUrl = 'https://roadecho.vercel.app/logo.PNG';
