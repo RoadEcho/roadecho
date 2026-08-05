@@ -230,7 +230,41 @@ export default function AdminDashboard() {
         const unlockData = await unlocksRes.json()
         const items = unlockData.unlocks || []
         setUnlocksList(items)
-        setData(prev => prev ? { ...prev, totalUnlocks: items.length } : prev)
+
+        // Compute unlocks breakdowns directly on frontend to match all records accurately
+        const dailyUnlocks: Record<string, number> = {}
+        const weeklyUnlocks: Record<string, number> = {}
+        const monthlyUnlocks: Record<string, number> = {}
+        const yearlyUnlocks: Record<string, number> = {}
+
+        items.forEach((item: any) => {
+          const rawDate = item.createdAt || item.created_at || new Date().toISOString()
+          const date = new Date(rawDate)
+          const dayKey = date.toISOString().split('T')[0]
+          const monthKey = dayKey.substring(0, 7)
+          const yearKey = dayKey.substring(0, 4)
+
+          dailyUnlocks[dayKey] = (dailyUnlocks[dayKey] || 0) + 1
+          monthlyUnlocks[monthKey] = (monthlyUnlocks[monthKey] || 0) + 1
+          yearlyUnlocks[yearKey] = (yearlyUnlocks[yearKey] || 0) + 1
+
+          const d = new Date(date)
+          d.setHours(0,0,0,0)
+          d.setDate(d.getDate() - d.getDay())
+          const weekKey = `Week of ${d.toISOString().split('T')[0]}`
+          weeklyUnlocks[weekKey] = (weeklyUnlocks[weekKey] || 0) + 1
+        })
+
+        setData(prev => prev ? { 
+          ...prev, 
+          totalUnlocks: items.length,
+          unlocksBreakdown: {
+            daily: dailyUnlocks,
+            weekly: weeklyUnlocks,
+            monthly: monthlyUnlocks,
+            yearly: yearlyUnlocks
+          }
+        } : prev)
       }
 
       const sharesRes = await fetch('/api/shares', {
@@ -320,6 +354,13 @@ export default function AdminDashboard() {
       return
     }
 
+    // Optimistically remove user instantly on the first click
+    setUserStats(prev => prev ? {
+      ...prev,
+      totalUsers: Math.max(0, prev.totalUsers - 1),
+      users: prev.users.filter(u => u.id !== userId)
+    } : prev)
+
     try {
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
@@ -333,6 +374,7 @@ export default function AdminDashboard() {
       checkAdminAndFetch()
     } catch (err: any) {
       setError(err.message || 'Failed to delete user')
+      checkAdminAndFetch() // Re-fetch on error to restore state if deletion failed
     }
   }
 
