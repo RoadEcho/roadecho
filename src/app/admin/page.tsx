@@ -139,15 +139,20 @@ export default function AdminDashboard() {
         return
       }
 
-      const res = await fetch('/api/admin/metrics', {
+      const res = await fetch('/api/analytics', {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to load analytics')
       setData(json)
 
-      if (json.messagesList) {
-        setMessagesList(json.messagesList)
+      // Fetch granular message logs directly from Supabase to ensure they load reliably
+      const { data: msgRows } = await supabase
+        .from('messages')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (msgRows) {
+        setMessagesList(msgRows)
       }
 
       // Fetch user logins directly and compute breakdowns
@@ -429,7 +434,7 @@ export default function AdminDashboard() {
           <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-lg space-y-2">
             <p className="text-xs font-semibold text-slate-400 uppercase">Messages ({activeTab})</p>
             <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
-              {data?.messagesBreakdown[activeTab] && Object.keys(data.messagesBreakdown[activeTab]).length > 0 ? (
+              {data?.messagesBreakdown?.[activeTab] && Object.keys(data.messagesBreakdown[activeTab]).length > 0 ? (
                 Object.entries(data.messagesBreakdown[activeTab]).map(([key, val]) => (
                   <div key={key} className="flex justify-between items-center text-xs font-mono">
                     <span className="text-slate-300">{key}</span>
@@ -445,7 +450,7 @@ export default function AdminDashboard() {
           <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-lg space-y-2">
             <p className="text-xs font-semibold text-slate-400 uppercase">Unlocks ({activeTab})</p>
             <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
-              {data?.unlocksBreakdown[activeTab] && Object.keys(data.unlocksBreakdown[activeTab]).length > 0 ? (
+              {data?.unlocksBreakdown?.[activeTab] && Object.keys(data.unlocksBreakdown[activeTab]).length > 0 ? (
                 Object.entries(data.unlocksBreakdown[activeTab]).map(([key, val]) => (
                   <div key={key} className="flex justify-between items-center text-xs font-mono">
                     <span className="text-slate-300">{key}</span>
@@ -461,7 +466,7 @@ export default function AdminDashboard() {
           <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-lg space-y-2">
             <p className="text-xs font-semibold text-slate-400 uppercase">Shares ({activeTab})</p>
             <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
-              {data?.sharesBreakdown[activeTab] && Object.keys(data.sharesBreakdown[activeTab]).length > 0 ? (
+              {data?.sharesBreakdown?.[activeTab] && Object.keys(data.sharesBreakdown[activeTab]).length > 0 ? (
                 Object.entries(data.sharesBreakdown[activeTab]).map(([key, val]) => (
                   <div key={key} className="flex justify-between items-center text-xs font-mono">
                     <span className="text-slate-300">{key}</span>
