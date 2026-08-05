@@ -55,12 +55,6 @@ interface AdminUser {
   created_at: string
 }
 
-interface SenderUser {
-  email: string
-  messageCount: number
-  lastMessageAt: string
-}
-
 interface UnlockRecord {
   id: string
   email: string
@@ -99,7 +93,6 @@ export default function AdminDashboard() {
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [admins, setAdmins] = useState<AdminUser[]>([])
-  const [senders, setSenders] = useState<SenderUser[]>([])
   const [unlocksList, setUnlocksList] = useState<UnlockRecord[]>([])
   const [sharesList, setSharesList] = useState<ShareRecord[]>([])
   const [messagesList, setMessagesList] = useState<MessageRecord[]>([])
@@ -208,14 +201,6 @@ export default function AdminDashboard() {
       if (adminRes.ok) {
         const adminData = await adminRes.json()
         setAdmins(adminData.admins || [])
-      }
-
-      const senderRes = await fetch('/api/admin/senders', {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      })
-      if (senderRes.ok) {
-        const senderData = await senderRes.json()
-        setSenders(senderData.senders || [])
       }
 
       const unlocksRes = await fetch('/api/admin/unlocks', {
