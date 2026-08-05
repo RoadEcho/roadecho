@@ -23,7 +23,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Verify requester is an admin in admin_users table
     const { data: adminRecord, error: adminErr } = await supabaseAdmin
       .from('admin_users')
       .select('email')
@@ -34,7 +33,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 })
     }
 
-    // Resolve params (handles both synchronous and Next.js Promise-based params)
     const params = await Promise.resolve(context.params)
     const rawId = params.id
 
@@ -45,11 +43,11 @@ export async function DELETE(
     let authUserId = rawId
     let userEmail: string | null = null
 
-    // Resolve whether rawId is an email or UUID
     if (rawId.includes('@')) {
       userEmail = rawId
-      const { data: listData } = await supabaseAdmin.auth.admin.listUsers()
-      const found = listData?.users?.find(u => u.email?.toLowerCase() === rawId.toLowerCase())
+      const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+      const usersArray = listData?.users as any[]
+      const found = usersArray?.find(u => u.email?.toLowerCase() === rawId.toLowerCase())
       if (found) {
         authUserId = found.id
         userEmail = found.email || userEmail
@@ -57,22 +55,17 @@ export async function DELETE(
     } else {
       const { data: userData } = await supabaseAdmin.auth.admin.getUserById(rawId)
       if (userData?.user) {
-        userEmail = userData.user.email || null
-        if (!userEmail && userData.user.user_metadata?.email) {
-          userEmail = userData.user.user_metadata.email
-        }
+        authUserId = userData.user.id
+        userEmail = userData.user.email || (userData.user as any).user_metadata?.email || null
       }
     }
 
-    // 1. Delete user from Supabase Auth
+    // Delete from Supabase Auth
     if (authUserId) {
-      const { error: deleteAuthErr } = await supabaseAdmin.auth.admin.deleteUser(authUserId)
-      if (deleteAuthErr) {
-        console.warn(`Auth deletion warning for user ${authUserId}:`, deleteAuthErr.message)
-      }
+      await supabaseAdmin.auth.admin.deleteUser(authUserId)
     }
 
-    // 2. Comprehensive cleanup across all public tables using both ID and email
+    // Comprehensive multi-table cleanup
     const tables = [
       'user_plates',
       'plate_vault',
@@ -85,7 +78,9 @@ export async function DELETE(
       'user_passes',
       'user_milestone_claims',
       'reward_events',
-      'shares'
+      'shares',
+      'messages',
+      'user_access'
     ]
 
     const idTargets = [authUserId, rawId].filter(Boolean)
@@ -93,20 +88,18 @@ export async function DELETE(
     for (const targetId of idTargets) {
       for (const table of tables) {
         await supabaseAdmin.from(table).delete().eq('user_id', targetId)
+        await supabaseAdmin.from(table).delete().eq('id', targetId)
       }
-      await supabaseAdmin.from('user_access').delete().eq('id', targetId)
-      await supabaseAdmin.from('users').delete().eq('id', targetId)
-      await supabaseAdmin.from('users').delete().eq('user_id', targetId)
-      await supabaseAdmin.from('admin_users').delete().eq('id', targetId)
     }
 
     if (userEmail) {
+      for (const table of tables) {
+        await supabaseAdmin.from(table).delete().eq('email', userEmail)
+      }
       await supabaseAdmin.from('admin_users').delete().eq('email', userEmail)
-      await supabaseAdmin.from('users').delete().eq('email', userEmail)
-      await supabaseAdmin.from('user_access').delete().eq('email', userEmail)
     }
 
-    return NextResponse.json({ success: true, message: 'User completely purged from system' })
+    return NextResponse.json({ success: true, message: 'User permanently purged from system' })
   } catch (err: any) {
     console.error('API Error deleting user:', err)
     return NextResponse.json({ error: err.message || 'Failed to delete user' }, { status: 500 })
