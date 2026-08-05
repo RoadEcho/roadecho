@@ -62,16 +62,16 @@ export async function DELETE(
     const idTargets = [authUserId, rawId].filter(Boolean);
     const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : null;
 
-    // 1. Delete from Supabase Auth permanently
+    // 1. Delete from Supabase Auth permanently and check for errors
     if (authUserId && !authUserId.includes('@')) {
-      try {
-        await supabaseAdmin.auth.admin.deleteUser(authUserId);
-      } catch (e) {
-        console.error('Error deleting auth user (may already be deleted):', e);
+      const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+      if (deleteAuthError) {
+        console.error('Supabase Auth deleteUser error:', deleteAuthError);
+        return NextResponse.json({ error: `Failed to delete auth user: ${deleteAuthError.message}` }, { status: 500 });
       }
     }
 
-    // 2. Comprehensive multi-table cleanup with safe error boundaries per table to prevent foreign key constraint crashes on first click
+    // 2. Comprehensive multi-table cleanup
     const tables = [
       'user_plates',
       'plate_vault',
@@ -96,7 +96,7 @@ export async function DELETE(
           await supabaseAdmin.from(table).delete().eq('user_id', targetId);
           await supabaseAdmin.from(table).delete().eq('id', targetId);
         } catch (e) {
-          // Suppress individual table constraint blockers so deletion completes in a single pass
+          // Suppress individual table errors
         }
       }
 
