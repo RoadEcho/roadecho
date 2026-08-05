@@ -63,11 +63,14 @@ export async function DELETE(
     const idTargets = [authUserId, rawId].filter(Boolean) as string[];
     const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : (rawId.includes('@') ? rawId.trim().toLowerCase() : null);
 
-    // 1. Delete from Supabase Auth safely (non-blocking if already removed)
+    // 1. Delete from Supabase Auth permanently and wait for cache propagation
     if (authUserId && !authUserId.includes('@')) {
       const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
       if (deleteAuthError) {
         console.warn('Auth delete warning (user may already be deleted):', deleteAuthError.message);
+      } else {
+        // Stabilization delay to allow Supabase Auth listUsers() cache to clear before responding
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
 
