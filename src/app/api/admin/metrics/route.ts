@@ -47,7 +47,7 @@ export async function GET(request: Request) {
       passVaultRes,
       platesCountRes
     ] = await Promise.all([
-      supabase.from('messages').select('*', { count: 'exact', head: true }),
+      supabase.from('messages').select('*').order('created_at', { ascending: false }),
       supabase.from('shares').select('*', { count: 'exact', head: true }),
       supabase.from('referrals').select('*', { count: 'exact', head: true }),
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }),
@@ -101,8 +101,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ 
       success: true, 
-      totalMessages: messagesRes.count || 0,
-      platesMessaged: platesCountRes.count || messagesRes.count || 0,
+      totalMessages: messagesLogs.length,
+      platesMessaged: platesCountRes.count || messagesLogs.length,
       totalUnlocks: combinedUnlocks.length,
       totalSubscribers: subscriptionsRes.count || 0,
       totalShares: sharesRes.count || 0,
@@ -114,7 +114,8 @@ export async function GET(request: Request) {
         messages: messagesLogs
       },
       unlocks: combinedUnlocks,
-      sharesList: sharesLogs
+      sharesList: sharesLogs,
+      messagesList: messagesLogs
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
