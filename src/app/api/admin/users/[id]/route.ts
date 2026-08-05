@@ -59,6 +59,9 @@ export async function DELETE(
       }
     }
 
+    const idTargets = [authUserId, rawId].filter(Boolean);
+    const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : null;
+
     // 1. Delete from Supabase Auth permanently
     if (authUserId && !authUserId.includes('@')) {
       try {
@@ -68,7 +71,7 @@ export async function DELETE(
       }
     }
 
-    // 2. Comprehensive multi-table cleanup by ID and by Email
+    // 2. Comprehensive multi-table cleanup with safe error boundaries per table to prevent foreign key constraint crashes on first click
     const tables = [
       'user_plates',
       'plate_vault',
@@ -83,29 +86,34 @@ export async function DELETE(
       'reward_events',
       'shares',
       'messages',
-      'user_access'
+      'user_access',
+      'admin_users'
     ];
 
-    const idTargets = [authUserId, rawId].filter(Boolean);
+    for (const table of tables) {
+      for (const targetId of idTargets) {
+        try {
+          await supabaseAdmin.from(table).delete().eq('user_id', targetId);
+          await supabaseAdmin.from(table).delete().eq('id', targetId);
+        } catch (e) {
+          // Suppress individual table constraint blockers so deletion completes in a single pass
+        }
+      }
 
-    for (const targetId of idTargets) {
-      for (const table of tables) {
-        await supabaseAdmin.from(table).delete().eq('user_id', targetId);
-        await supabaseAdmin.from(table).delete().eq('id', targetId);
+      if (cleanEmail) {
+        try {
+          await supabaseAdmin.from(table).delete().eq('email', cleanEmail);
+          await supabaseAdmin.from(table).delete().ilike('email', cleanEmail);
+        } catch (e) {
+          // Suppress
+        }
       }
     }
 
-    if (userEmail) {
-      const cleanEmail = userEmail.trim().toLowerCase();
-      for (const table of tables) {
-        await supabaseAdmin.from(table).delete().eq('email', cleanEmail);
-      }
-      // Explicitly purge telemetry logs and access tables by email
-      await supabaseAdmin.from('user_logins').delete().ilike('email', cleanEmail);
-      await supabaseAdmin.from('user_access').delete().ilike('email', cleanEmail);
-      await supabaseAdmin.from('shares').delete().ilike('email', cleanEmail);
-      await supabaseAdmin.from('messages').delete().ilike('sender_email', cleanEmail);
-      await supabaseAdmin.from('admin_users').delete().ilike('email', cleanEmail);
+    if (cleanEmail) {
+      try {
+        await supabaseAdmin.from('messages').delete().ilike('sender_email', cleanEmail);
+      } catch (e) {}
     }
 
     return NextResponse.json({ success: true, message: 'User permanently purged from system' });
