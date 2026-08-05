@@ -73,8 +73,8 @@ export async function POST(request: Request) {
     // 4. Generate Zero-Knowledge Cryptographic Hash
     const plateHash = getPlateHash(cleanPlate, cleanState, cleanCountry);
 
-    // 5. Save Hashed Message to Supabase Database with Coordinates
-    const { error: dbError } = await supabase.from('messages').insert([
+    // 5. Save Hashed Message to Supabase Database with Coordinates and select back the inserted record
+    const { data: insertedMessage, error: dbError } = await supabase.from('messages').insert([
       {
         license_plate: plateHash,
         country: cleanCountry,
@@ -85,14 +85,14 @@ export async function POST(request: Request) {
         latitude: latitude ? parseFloat(latitude) : null,
         longitude: longitude ? parseFloat(longitude) : null,
       }
-    ]);
+    ]).select().single();
 
     if (dbError) {
       console.error('Supabase Error:', dbError);
       return NextResponse.json({ error: `Database Error: ${dbError.message}` }, { status: 500 });
     }
 
-    // 6. Find if the plate is claimed to notify the owner (checking both clean plate and hash with state)
+    // 6. Find if the plate is claimed to notify the owner & check for active unlock tokens/vault passes
     let ownerEmail: string | null = null;
     const { data: plateOwnerData } = await supabase
       .from('user_plates')
@@ -105,6 +105,25 @@ export async function POST(request: Request) {
       const { data: userData } = await supabase.auth.admin.getUserById(plateOwnerData.user_id);
       if (userData?.user?.email) {
         ownerEmail = userData.user.email;
+      }
+
+      // Check if the plate owner has an active vault pass / unlock token prior activated
+      const { data: vaultPass } = await supabase
+        .from('vault_passes')
+        .select('*')
+        .eq('user_id', plateOwnerData.user_id)
+        .eq('status', 'active')
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+
+      if (vaultPass) {
+        // Explicitly log the unlock event so Admin Analytics total unlocks counter increments
+        await supabase.from('unlocks').insert({
+          user_id: plateOwnerData.user_id,
+          plate_hash: plateHash,
+          message_id: insertedMessage?.id,
+          source: 'auto_vault_unlock',
+        });
       }
     }
 
