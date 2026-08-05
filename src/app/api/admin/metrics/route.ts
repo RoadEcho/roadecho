@@ -45,7 +45,8 @@ export async function GET(request: Request) {
       unlocksRes,
       userPassesRes,
       passVaultRes,
-      platesCountRes
+      platesCountRes,
+      unlocksCountRes
     ] = await Promise.all([
       supabase.from('messages').select('*').order('created_at', { ascending: false }),
       supabase.from('shares').select('*', { count: 'exact', head: true }),
@@ -55,7 +56,8 @@ export async function GET(request: Request) {
       supabase.from('unlocks').select('*').order('created_at', { ascending: false }),
       supabase.from('user_passes').select('*').order('updated_at', { ascending: false }),
       supabase.from('user_pass_vault').select('*').order('updated_at', { ascending: false }),
-      supabase.from('messages').select('plate_hash', { count: 'exact', head: true })
+      supabase.from('messages').select('plate_hash', { count: 'exact', head: true }),
+      supabase.from('unlocks').select('*', { count: 'exact', head: true })
     ]);
 
     const combinedUnlocks: any[] = [];
@@ -103,7 +105,7 @@ export async function GET(request: Request) {
       success: true, 
       totalMessages: messagesLogs.length,
       platesMessaged: platesCountRes.count || messagesLogs.length,
-      totalUnlocks: combinedUnlocks.length,
+      totalUnlocks: unlocksCountRes.count ?? combinedUnlocks.length,
       totalSubscribers: subscriptionsRes.count || 0,
       totalShares: sharesRes.count || 0,
       totalReferrals: referralsRes.count || 0,
