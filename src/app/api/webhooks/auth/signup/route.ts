@@ -21,10 +21,10 @@ export async function POST(request: Request) {
     const userId = newUser.id;
     const createdAt = newUser.created_at;
 
-    // Dispatch email to admin via Resend
+    // Send email notification to admin via Resend
     await resend.emails.send({
       from: 'RoadEcho <noreply@roadecho.vercel.app>',
-      to: process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com', // Replace with your admin email
+      to: process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com',
       subject: 'New User Signup - RoadEcho',
       html: `
         <h2>A new user just signed up on RoadEcho:</h2>
@@ -35,8 +35,6 @@ export async function POST(request: Request) {
         </ul>
       `,
     });
-
-    console.log(`Signup email notification successfully sent for: ${userEmail}`);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: any) {
