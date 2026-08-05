@@ -551,7 +551,7 @@ export default function AdminDashboard() {
                 <div key={msg.id} className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-2">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-mono text-[11px] text-cyan-300">Plate: {msg.license_plate || msg.plate_hash?.slice(0, 10) || 'N/A'}</p>
+                      <p className="font-mono text-[11px] text-cyan-300">Location: {msg.state ? `${msg.state}, ${msg.country || 'USA'}` : (msg.country || 'USA')}</p>
                       <p className="text-[11px] text-slate-300 mt-0.5 truncate max-w-[200px]">
                         "{msg.message || 'No message content'}"
                       </p>
