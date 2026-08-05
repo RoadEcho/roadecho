@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Conflict detected, please try again.' }, { status: 409 });
     }
 
-    // 4.5. Automatically unlock any pending/locked messages for this user's plates
+    // 4.5. Automatically unlock any pending/locked messages for this user's plates and log them in `unlocks`
     const { data: userPlates } = await supabaseAdmin
       .from('user_plates')
       .select('plate_number, plate_hash')
@@ -72,32 +72,30 @@ export async function POST(request: Request) {
 
       const { data: lockedMessages } = await supabaseAdmin
         .from('messages')
-        .select('id, license_plate')
-        .in('license_plate', plateHashes)
-        .eq('is_unlocked', false);
+        .select('id, license_plate, plate_hash')
+        .or(plateHashes.map(h => `license_plate.eq.${h},plate_hash.eq.${h}`).join(','));
 
       if (lockedMessages && lockedMessages.length > 0) {
         const messageIds = lockedMessages.map(m => m.id);
 
+        // Update messages status (if your messages table uses is_unlocked or similar)
         await supabaseAdmin
           .from('messages')
           .update({ is_unlocked: true, unlocked_at: now.toISOString() })
           .in('id', messageIds);
-      }
-    }
 
-    // 5. Log unlock event for admin analytics metrics & directory view
-    try {
-      await supabaseAdmin.from('unlocks').insert({
-        user_id: userId,
-        plate: 'Vault Pass Activation',
-        status: 'Active',
-        type: 'stored_pass_activation',
-        created_at: now.toISOString(),
-        expires_at: newExpiry
-      });
-    } catch (analyticsErr) {
-      console.error('Failed to log admin unlock analytics:', analyticsErr);
+        // Log each unlock matching exact database schema (`message_id`, `user_id`, `amount`)
+        const unlockInserts = lockedMessages.map(msg => ({
+          message_id: msg.id,
+          user_id: userId,
+          amount: 1,
+        }));
+
+        const { error: unlockLogErr } = await supabaseAdmin.from('unlocks').insert(unlockInserts);
+        if (unlockLogErr) {
+          console.error('Failed to log batch unlock analytics:', unlockLogErr);
+        }
+      }
     }
 
     // 6. Return updated pass count so frontend state updates instantly
