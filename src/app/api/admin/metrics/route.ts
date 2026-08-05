@@ -53,47 +53,46 @@ export async function GET(request: Request) {
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }),
       supabase.from('passes').select('*').order('created_at', { ascending: false }),
       supabase.from('unlocks').select('*').order('created_at', { ascending: false }),
-      supabase.from('user_passes').select('*').order('created_at', { ascending: false }),
-      supabase.from('user_pass_vault').select('*').order('created_at', { ascending: false }),
+      supabase.from('user_passes').select('*').order('updated_at', { ascending: false }),
+      supabase.from('user_pass_vault').select('*').order('updated_at', { ascending: false }),
       supabase.from('messages').select('plate_hash', { count: 'exact', head: true })
     ]);
 
-    const combinedUnlocks: any[] = [];
-
+    // 1. True Unlocks & Passes (Powers Total Unlocks card & Unlocks Daily timeline without clumping)
+    const actualUnlocks: any[] = [];
     (passesRes.data || []).forEach((u: any) => {
-      combinedUnlocks.push({
+      actualUnlocks.push({
         id: `pass-${u.id}`,
         created_at: u.created_at || new Date().toISOString(),
         ...u
       });
     });
-
     (unlocksRes.data || []).forEach((u: any) => {
-      combinedUnlocks.push({
+      actualUnlocks.push({
         id: `unlock-${u.id}`,
         created_at: u.created_at || new Date().toISOString(),
         ...u
       });
     });
+    actualUnlocks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-    // Prioritize created_at over updated_at so historical dates (like Aug 3) are preserved and don't clump
+    // 2. User Passes & Vault State Updates (Powers Total Logins card & Logins Daily breakdown)
+    const vaultLogins: any[] = [];
     (userPassesRes.data || []).forEach((u: any) => {
-      combinedUnlocks.push({
+      vaultLogins.push({
         id: `userpass-${u.user_id || u.id}`,
-        created_at: u.created_at || u.updated_at || new Date().toISOString(),
+        created_at: u.updated_at || u.created_at || new Date().toISOString(),
         ...u
       });
     });
-
     (passVaultRes.data || []).forEach((u: any) => {
-      combinedUnlocks.push({
+      vaultLogins.push({
         id: `vault-${u.user_id || u.id}`,
-        created_at: u.created_at || u.updated_at || new Date().toISOString(),
+        created_at: u.updated_at || u.created_at || new Date().toISOString(),
         ...u
       });
     });
-
-    combinedUnlocks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    vaultLogins.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     const sharesLogs = sharesRes.data || [];
     const messagesLogs = messagesRes.data || [];
@@ -102,17 +101,18 @@ export async function GET(request: Request) {
       success: true, 
       totalMessages: messagesLogs.length,
       platesMessaged: platesCountRes.count || messagesLogs.length,
-      totalUnlocks: combinedUnlocks.length,
+      totalUnlocks: actualUnlocks.length,
+      totalLogins: vaultLogins.length,
       totalSubscribers: subscriptionsRes.count || 0,
       totalShares: sharesRes.count || 0,
       totalReferrals: referralsRes.count || 0,
       totalAccounts: totalAccountsCount,
       breakdowns: {
-        vaultActivations: combinedUnlocks,
+        vaultActivations: vaultLogins,
         shares: sharesLogs,
         messages: messagesLogs
       },
-      unlocks: combinedUnlocks,
+      unlocks: actualUnlocks,
       sharesList: sharesLogs,
       messagesList: messagesLogs
     });
