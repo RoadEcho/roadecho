@@ -45,8 +45,7 @@ export async function GET(request: Request) {
       unlocksRes,
       userPassesRes,
       passVaultRes,
-      platesCountRes,
-      unlocksCountRes
+      platesCountRes
     ] = await Promise.all([
       supabase.from('messages').select('*').order('created_at', { ascending: false }),
       supabase.from('shares').select('*', { count: 'exact', head: true }),
@@ -56,8 +55,7 @@ export async function GET(request: Request) {
       supabase.from('unlocks').select('*').order('created_at', { ascending: false }),
       supabase.from('user_passes').select('*').order('updated_at', { ascending: false }),
       supabase.from('user_pass_vault').select('*').order('updated_at', { ascending: false }),
-      supabase.from('messages').select('plate_hash', { count: 'exact', head: true }),
-      supabase.from('unlocks').select('*', { count: 'exact', head: true })
+      supabase.from('messages').select('plate_hash', { count: 'exact', head: true })
     ]);
 
     const combinedUnlocks: any[] = [];
@@ -87,13 +85,11 @@ export async function GET(request: Request) {
     });
 
     (passVaultRes.data || []).forEach((u: any) => {
-      if (u.available_passes > 0 || u.pass_expires_at) {
-        combinedUnlocks.push({
-          id: `vault-${u.user_id}`,
-          created_at: u.updated_at || u.created_at || new Date().toISOString(),
-          ...u
-        });
-      }
+      combinedUnlocks.push({
+        id: `vault-${u.user_id}`,
+        created_at: u.updated_at || u.created_at || new Date().toISOString(),
+        ...u
+      });
     });
 
     combinedUnlocks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -105,7 +101,7 @@ export async function GET(request: Request) {
       success: true, 
       totalMessages: messagesLogs.length,
       platesMessaged: platesCountRes.count || messagesLogs.length,
-      totalUnlocks: unlocksCountRes.count ?? combinedUnlocks.length,
+      totalUnlocks: combinedUnlocks.length,
       totalSubscribers: subscriptionsRes.count || 0,
       totalShares: sharesRes.count || 0,
       totalReferrals: referralsRes.count || 0,
