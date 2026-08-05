@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       totalUsers,
       activeUsers,
-      admins, // <--- Added admins array here so the dashboard displays them
+      admins,
       users: users.map(u => ({
         id: u.id,
         email: u.email,
