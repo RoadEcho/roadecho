@@ -53,8 +53,8 @@ export async function GET(request: Request) {
       supabase.from('subscriptions').select('*', { count: 'exact', head: true }),
       supabase.from('passes').select('*').order('created_at', { ascending: false }),
       supabase.from('unlocks').select('*').order('created_at', { ascending: false }),
-      supabase.from('user_passes').select('*').order('updated_at', { ascending: false }),
-      supabase.from('user_pass_vault').select('*').order('updated_at', { ascending: false }),
+      supabase.from('user_passes').select('*').order('created_at', { ascending: false }),
+      supabase.from('user_pass_vault').select('*').order('created_at', { ascending: false }),
       supabase.from('messages').select('plate_hash', { count: 'exact', head: true })
     ]);
 
@@ -76,18 +76,19 @@ export async function GET(request: Request) {
       });
     });
 
+    // Prioritize created_at over updated_at so historical dates (like Aug 3) are preserved and don't clump
     (userPassesRes.data || []).forEach((u: any) => {
       combinedUnlocks.push({
-        id: `userpass-${u.user_id}`,
-        created_at: u.updated_at || u.created_at || new Date().toISOString(),
+        id: `userpass-${u.user_id || u.id}`,
+        created_at: u.created_at || u.updated_at || new Date().toISOString(),
         ...u
       });
     });
 
     (passVaultRes.data || []).forEach((u: any) => {
       combinedUnlocks.push({
-        id: `vault-${u.user_id}`,
-        created_at: u.updated_at || u.created_at || new Date().toISOString(),
+        id: `vault-${u.user_id || u.id}`,
+        created_at: u.created_at || u.updated_at || new Date().toISOString(),
         ...u
       });
     });
