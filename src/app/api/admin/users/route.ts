@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Verify admin access
     const { data: adminRecord } = await supabaseAdmin
       .from('admin_users')
       .select('email')
@@ -30,11 +31,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    // Fetch Auth users with pagination and public users table in parallel
-    const [authUsersRes, adminsRes, publicUsersRes] = await Promise.all([
+    // Fetch Auth users, admin list, and auxiliary login/access records in parallel
+    const [authUsersRes, adminsRes, userLoginsRes, userAccessRes] = await Promise.all([
       supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
       supabaseAdmin.from('admin_users').select('id, email, created_at').order('created_at', { ascending: false }),
-      supabaseAdmin.from('users').select('*')
+      supabaseAdmin.from('user_logins').select('user_id, email, created_at').order('created_at', { ascending: false }),
+      supabaseAdmin.from('user_access').select('id, email, created_at')
     ]);
 
     if (authUsersRes.error) {
@@ -42,36 +44,54 @@ export async function GET(request: NextRequest) {
     }
 
     const authUsers = authUsersRes.data.users || [];
-    const publicUsers = publicUsersRes.data || [];
     const admins = adminsRes.data || [];
+    const logins = userLoginsRes.data || [];
+    const accessList = userAccessRes.data || [];
 
-    const usersMap = new Map();
+    const usersMap = new Map<string, { id: string; email: string; createdAt: string; lastSignIn: string | null }>();
 
-    // Map all Supabase Auth users
+    // 1. Populate from Supabase Auth users
     authUsers.forEach(u => {
-      usersMap.set(u.id, {
-        id: u.id,
-        email: u.email,
-        createdAt: u.created_at,
-        lastSignIn: (u as any).last_sign_in_at || (u as any).lastSignInAt || null,
-      });
+      if (u.id) {
+        usersMap.set(u.id, {
+          id: u.id,
+          email: u.email || u.user_metadata?.email || 'Unknown',
+          createdAt: u.created_at,
+          lastSignIn: (u as any).last_sign_in_at || (u as any).lastSignInAt || null,
+        });
+      }
     });
 
-    // Ensure public table users are also merged (catches newly registered profiles instantly)
-    publicUsers.forEach((pu: any) => {
-      const id = pu.id || pu.user_id;
-      const email = pu.email;
-      const exists = Array.from(usersMap.values()).some((u: any) => 
-        (id && u.id === id) || (email && u.email && u.email.toLowerCase() === email.toLowerCase())
-      );
+    // 2. Merge from user_logins (ensures active session users are always tracked)
+    logins.forEach((l: any) => {
+      const uid = l.user_id || l.email;
+      if (uid && !usersMap.has(uid)) {
+        // Check if email already exists under another key
+        const existing = Array.from(usersMap.values()).find(u => u.email.toLowerCase() === l.email?.toLowerCase());
+        if (!existing && l.email) {
+          usersMap.set(uid, {
+            id: l.user_id || l.email,
+            email: l.email,
+            createdAt: l.created_at || new Date().toISOString(),
+            lastSignIn: l.created_at || null,
+          });
+        }
+      }
+    });
 
-      if (!exists && (id || email)) {
-        usersMap.set(id || email, {
-          id: id || email,
-          email: email || 'Unknown',
-          createdAt: pu.created_at || new Date().toISOString(),
-          lastSignIn: pu.last_sign_in_at || null,
-        });
+    // 3. Merge from user_access
+    accessList.forEach((a: any) => {
+      const uid = a.id || a.email;
+      if (uid && !usersMap.has(uid)) {
+        const existing = Array.from(usersMap.values()).find(u => u.email.toLowerCase() === a.email?.toLowerCase());
+        if (!existing && a.email) {
+          usersMap.set(uid, {
+            id: a.id || a.email,
+            email: a.email,
+            createdAt: a.created_at || new Date().toISOString(),
+            lastSignIn: null,
+          });
+        }
       }
     });
 
@@ -93,6 +113,6 @@ export async function GET(request: NextRequest) {
       users
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 }
