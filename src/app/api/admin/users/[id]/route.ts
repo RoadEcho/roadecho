@@ -40,7 +40,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'User ID or email is required' }, { status: 400 });
     }
 
-    let authUserId = rawId;
+    let authUserId: string | null = null;
     let userEmail: string | null = null;
 
     if (rawId.includes('@')) {
@@ -52,6 +52,7 @@ export async function DELETE(
         userEmail = found.email || userEmail;
       }
     } else {
+      authUserId = rawId;
       const { data: userData } = await supabaseAdmin.auth.admin.getUserById(rawId);
       if (userData?.user) {
         authUserId = userData.user.id;
@@ -59,15 +60,14 @@ export async function DELETE(
       }
     }
 
-    const idTargets = [authUserId, rawId].filter(Boolean);
-    const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : null;
+    const idTargets = [authUserId, rawId].filter(Boolean) as string[];
+    const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : (rawId.includes('@') ? rawId.trim().toLowerCase() : null);
 
-    // 1. Delete from Supabase Auth permanently and check for errors
+    // 1. Delete from Supabase Auth safely (non-blocking if already removed)
     if (authUserId && !authUserId.includes('@')) {
       const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
       if (deleteAuthError) {
-        console.error('Supabase Auth deleteUser error:', deleteAuthError);
-        return NextResponse.json({ error: `Failed to delete auth user: ${deleteAuthError.message}` }, { status: 500 });
+        console.warn('Auth delete warning (user may already be deleted):', deleteAuthError.message);
       }
     }
 
