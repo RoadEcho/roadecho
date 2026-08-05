@@ -5,16 +5,14 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: Request) {
   try {
-    // Validate the secret authorization header from Supabase
     const authHeader = request.headers.get('authorization');
     if (authHeader !== `Bearer ${process.env.SUPABASE_WEBHOOK_SECRET}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const payload = await request.json();
-    
-    // Supabase auth webhooks pass the record under payload.record
     const newUser = payload.record;
+    
     if (!newUser || !newUser.email) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
@@ -23,10 +21,10 @@ export async function POST(request: Request) {
     const userId = newUser.id;
     const createdAt = newUser.created_at;
 
-    // Send the email using Resend
+    // Dispatch email to admin via Resend
     await resend.emails.send({
       from: 'RoadEcho <noreply@roadecho.vercel.app>',
-      to: 'your-admin-email@example.com', // Replace with your actual admin email address
+      to: process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com', // Replace with your admin email
       subject: 'New User Signup - RoadEcho',
       html: `
         <h2>A new user just signed up on RoadEcho:</h2>
@@ -38,7 +36,7 @@ export async function POST(request: Request) {
       `,
     });
 
-    console.log(`New user signup notification sent for: ${userEmail}`);
+    console.log(`Signup email notification successfully sent for: ${userEmail}`);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: any) {
