@@ -80,26 +80,16 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Message not found' }, { status: 404 });
     }
 
-    // Update message status to unlocked
-    const { error: updateErr } = await supabase
-      .from('messages')
-      .update({ is_unlocked: true, unlocked_at: new Date().toISOString() })
-      .eq('id', messageId);
-
-    if (updateErr) {
-      return NextResponse.json({ error: 'Failed to update message status' }, { status: 500 });
-    }
-
-    // Explicitly log the unlock event for Admin Analytics
+    // Explicitly log the unlock event for Admin Analytics matching the database schema
     const { error: unlockLogErr } = await supabase.from('unlocks').insert({
-      user_id: userId,
-      plate_hash: messageRecord.license_plate,
       message_id: messageRecord.id,
-      source: 'manual_message_unlock',
+      user_id: userId,
+      amount: 1,
     });
 
     if (unlockLogErr) {
       console.error('Failed to log unlock event for analytics:', unlockLogErr);
+      return NextResponse.json({ error: 'Failed to record unlock event' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, message: 'Message unlocked successfully' });
