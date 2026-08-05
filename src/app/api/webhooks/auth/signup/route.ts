@@ -12,8 +12,9 @@ export async function POST(request: Request) {
     }
 
     const payload = await request.json();
-    const newUser = payload.record;
     
+    // Supabase auth webhooks pass the record under payload.record
+    const newUser = payload.record;
     if (!newUser || !newUser.email) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
@@ -22,10 +23,10 @@ export async function POST(request: Request) {
     const userId = newUser.id;
     const createdAt = newUser.created_at;
 
-    // Send the email to your admin address
+    // Send the email using Resend
     await resend.emails.send({
-      from: 'RoadEcho <noreply@roadecho.vercel.app>', // Update with your verified sender domain if needed
-      to: 'roadecho.admin@gmail.com', // Replace with your actual admin email address
+      from: 'RoadEcho <noreply@roadecho.vercel.app>',
+      to: 'your-admin-email@example.com', // Replace with your actual admin email address
       subject: 'New User Signup - RoadEcho',
       html: `
         <h2>A new user just signed up on RoadEcho:</h2>
@@ -36,6 +37,8 @@ export async function POST(request: Request) {
         </ul>
       `,
     });
+
+    console.log(`New user signup notification sent for: ${userEmail}`);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: any) {
