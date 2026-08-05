@@ -20,7 +20,6 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Verify requester is an admin in admin_users table
     const { data: adminRecord, error: adminErr } = await supabaseAdmin
       .from('admin_users')
       .select('email')
@@ -44,7 +43,6 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'You cannot remove yourself as an admin.' }, { status: 400 })
     }
 
-    // 1. Remove from admin_users table
     const { error: dbError } = await supabaseAdmin
       .from('admin_users')
       .delete()
@@ -52,10 +50,10 @@ export async function DELETE(request: NextRequest) {
 
     if (dbError) throw dbError
 
-    // 2. Delete the user from Supabase Auth so they can no longer log in or reappear
     const { data: listUsersData, error: listErr } = await supabaseAdmin.auth.admin.listUsers()
     if (!listErr && listUsersData?.users) {
-      const targetUser = listUsersData.users.find((u: any) => u.email?.toLowerCase() === cleanEmail)
+      const usersArray = listUsersData.users as any[]
+      const targetUser = usersArray.find(u => u.email?.toLowerCase() === cleanEmail)
       if (targetUser) {
         await supabaseAdmin.auth.admin.deleteUser(targetUser.id)
       }
