@@ -58,6 +58,9 @@ export async function DELETE(
       const { data: userData } = await supabaseAdmin.auth.admin.getUserById(rawId)
       if (userData?.user) {
         userEmail = userData.user.email || null
+        if (!userEmail && userData.user.user_metadata?.email) {
+          userEmail = userData.user.user_metadata.email
+        }
       }
     }
 
@@ -93,6 +96,7 @@ export async function DELETE(
       }
       await supabaseAdmin.from('user_access').delete().eq('id', targetId)
       await supabaseAdmin.from('users').delete().eq('id', targetId)
+      await supabaseAdmin.from('users').delete().eq('user_id', targetId)
       await supabaseAdmin.from('admin_users').delete().eq('id', targetId)
     }
 
