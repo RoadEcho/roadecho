@@ -97,25 +97,32 @@ export async function GET(request: Request) {
     const sharesLogs = sharesRes.data || [];
     const messagesLogs = messagesRes.data || [];
 
-    return NextResponse.json({ 
-      success: true, 
-      totalMessages: messagesLogs.length,
-      platesMessaged: platesCountRes.count || messagesLogs.length,
-      totalUnlocks: actualUnlocks.length, // Correctly counts all combined passes and unlocks
-      totalLogins: vaultLogins.length,
-      totalSubscribers: subscriptionsRes.count || 0,
-      totalShares: sharesRes.count || 0,
-      totalReferrals: referralsRes.count || 0,
-      totalAccounts: totalAccountsCount,
-      breakdowns: {
-        vaultActivations: vaultLogins,
-        shares: sharesLogs,
-        messages: messagesLogs
+    return NextResponse.json(
+      { 
+        success: true, 
+        totalMessages: messagesLogs.length,
+        platesMessaged: platesCountRes.count || messagesLogs.length,
+        totalUnlocks: actualUnlocks.length, 
+        totalLogins: vaultLogins.length,
+        totalSubscribers: subscriptionsRes.count || 0,
+        totalShares: sharesRes.count || 0,
+        totalReferrals: referralsRes.count || 0,
+        totalAccounts: totalAccountsCount,
+        breakdowns: {
+          vaultActivations: vaultLogins,
+          shares: sharesLogs,
+          messages: messagesLogs
+        },
+        unlocks: actualUnlocks,
+        sharesList: sharesLogs,
+        messagesList: messagesLogs
       },
-      unlocks: actualUnlocks,
-      sharesList: sharesLogs,
-      messagesList: messagesLogs
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
