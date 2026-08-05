@@ -93,12 +93,11 @@ export async function POST(request: Request) {
         ownerEmail = userData.user.email;
       }
 
-      // Check active vault pass / unlock token
+      // Check active vault pass
       const { data: vaultPass } = await supabase
-        .from('vault_passes')
+        .from('passes')
         .select('*')
         .eq('user_id', plateOwnerUserId)
-        .eq('status', 'active')
         .gt('expires_at', new Date().toISOString())
         .maybeSingle();
 
@@ -118,8 +117,7 @@ export async function POST(request: Request) {
         terms_agreed: true,
         latitude: latitude ? parseFloat(latitude) : null,
         longitude: longitude ? parseFloat(longitude) : null,
-        is_unlocked: isUnlocked,
-        unlocked_at: isUnlocked ? new Date().toISOString() : null,
+        plate_hash: plateHash,
       }
     ]).select().single();
 
@@ -128,13 +126,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Database Error: ${dbError.message}` }, { status: 500 });
     }
 
-    // 6. Explicitly log the unlock event in `unlocks` so Admin Analytics counter increments
+    // 6. Explicitly log the unlock event in `unlocks` matching the database schema (message_id, user_id, amount)
     if (isUnlocked && plateOwnerUserId && insertedMessage) {
       const { error: unlockLogErr } = await supabase.from('unlocks').insert({
-        user_id: plateOwnerUserId,
-        plate_hash: plateHash,
         message_id: insertedMessage.id,
-        source: 'auto_vault_unlock',
+        user_id: plateOwnerUserId,
+        amount: 1,
       });
 
       if (unlockLogErr) {
