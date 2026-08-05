@@ -21,10 +21,12 @@ export async function POST(request: Request) {
     const userId = newUser.id;
     const createdAt = newUser.created_at;
 
-    // Send email notification to admin via Resend
+    // Use the exact same working admin email address used by your plate claim notifications
+    const adminEmail = process.env.ADMIN_EMAIL || process.env.NOTIFICATION_EMAIL || 'roadecho.admin@gmail.com';
+
     await resend.emails.send({
       from: 'RoadEcho <noreply@roadecho.vercel.app>',
-      to: process.env.ADMIN_EMAIL || 'roadecho.admin@gmail.com',
+      to: adminEmail,
       subject: 'New User Signup - RoadEcho',
       html: `
         <h2>A new user just signed up on RoadEcho:</h2>
