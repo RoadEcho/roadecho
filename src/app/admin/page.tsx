@@ -55,6 +55,12 @@ interface AdminUser {
   created_at: string
 }
 
+interface SenderUser {
+  email: string
+  messageCount: number
+  lastMessageAt: string
+}
+
 interface UnlockRecord {
   id: string
   email: string
@@ -77,25 +83,14 @@ interface ShareRecord {
   metadata?: any
 }
 
-interface MessageRecord {
-  id: string
-  email?: string
-  plate_hash?: string
-  license_plate?: string
-  message?: string
-  state?: string
-  country?: string
-  created_at: string
-}
-
 export default function AdminDashboard() {
   const router = useRouter()
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [admins, setAdmins] = useState<AdminUser[]>([])
+  const [senders, setSenders] = useState<SenderUser[]>([])
   const [unlocksList, setUnlocksList] = useState<UnlockRecord[]>([])
   const [sharesList, setSharesList] = useState<ShareRecord[]>([])
-  const [messagesList, setMessagesList] = useState<MessageRecord[]>([])
   const [adminEmail, setAdminEmail] = useState<string | null>(null)
   const [newEmail, setNewEmail] = useState('')
   const [loading, setLoading] = useState(true)
@@ -132,16 +127,12 @@ export default function AdminDashboard() {
         return
       }
 
-      const res = await fetch('/api/admin/metrics', {
+      const res = await fetch('/api/analytics', {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to load analytics')
       setData(json)
-
-      if (json.messagesList) {
-        setMessagesList(json.messagesList)
-      }
 
       // Fetch user logins directly and compute breakdowns
       const { data: loginsRows } = await supabase
@@ -201,6 +192,14 @@ export default function AdminDashboard() {
       if (adminRes.ok) {
         const adminData = await adminRes.json()
         setAdmins(adminData.admins || [])
+      }
+
+      const senderRes = await fetch('/api/admin/senders', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      })
+      if (senderRes.ok) {
+        const senderData = await senderRes.json()
+        setSenders(senderData.senders || [])
       }
 
       const unlocksRes = await fetch('/api/admin/unlocks', {
@@ -359,7 +358,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Total Messages</p>
-          <p className="text-2xl font-black text-cyan-400 mt-1">{messagesList.length > 0 ? messagesList.length : (data?.totalMessages || 0)}</p>
+          <p className="text-2xl font-black text-cyan-400 mt-1">{data?.totalMessages || 0}</p>
         </div>
         <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
           <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Plates Messaged</p>
@@ -522,32 +521,24 @@ export default function AdminDashboard() {
       {/* Logs & Directories Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         
-        {/* Granular Messages Sent Log */}
+        {/* Message Senders Directory */}
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
-          <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Granular Messages Sent Log</h2>
+          <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Message Senders Directory</h2>
           <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-            {messagesList.length > 0 ? (
-              messagesList.map((msg) => (
-                <div key={msg.id} className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-mono text-[11px] text-cyan-300">Plate: {msg.license_plate || msg.plate_hash?.slice(0, 10) || 'N/A'}</p>
-                      <p className="text-[11px] text-slate-300 mt-0.5 truncate max-w-[200px]">
-                        "{msg.message || 'No message content'}"
-                      </p>
-                    </div>
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800 uppercase tracking-wide">
-                      {msg.state || msg.country || 'USA'}
-                    </span>
+            {senders.length > 0 ? (
+              senders.map((s, idx) => (
+                <div key={idx} className="flex justify-between items-center p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs">
+                  <div>
+                    <p className="font-medium text-white">{s.email}</p>
+                    <p className="text-[11px] text-slate-500">Total Sent: {s.messageCount}</p>
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-800/80 flex justify-between">
-                    <span>{new Date(msg.created_at).toLocaleString()}</span>
-                    <span className="text-slate-400">{msg.email || 'Anonymous'}</span>
-                  </div>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {new Date(s.lastMessageAt).toLocaleDateString()}
+                  </span>
                 </div>
               ))
             ) : (
-              <p className="text-slate-500 text-xs italic text-center py-4">No message logs recorded.</p>
+              <p className="text-slate-500 text-xs italic text-center py-4">No message senders recorded.</p>
             )}
           </div>
         </div>
