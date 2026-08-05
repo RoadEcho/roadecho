@@ -126,17 +126,24 @@ export async function GET(request: Request) {
       return stats
     }
 
-    return NextResponse.json({
-      totalMessages: messages.length,
-      uniquePlatesCount,
-      totalUnlocks: combinedUnlocks.length,
-      totalSubscribers,
-      totalShares: shares.length,
-      totalReferrals: referrals.length,
-      messagesBreakdown: groupStats(messages),
-      unlocksBreakdown: groupStats(combinedUnlocks),
-      sharesBreakdown: groupStats(shares)
-    })
+    return NextResponse.json(
+      {
+        totalMessages: messages.length,
+        uniquePlatesCount,
+        totalUnlocks: combinedUnlocks.length,
+        totalSubscribers,
+        totalShares: shares.length,
+        totalReferrals: referrals.length,
+        messagesBreakdown: groupStats(messages),
+        unlocksBreakdown: groupStats(combinedUnlocks),
+        sharesBreakdown: groupStats(shares)
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
+    )
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
