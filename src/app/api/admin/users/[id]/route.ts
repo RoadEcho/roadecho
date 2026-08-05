@@ -43,13 +43,33 @@ export async function DELETE(
     let authUserId: string | null = null;
     let userEmail: string | null = null;
 
+    // 1. Bulletproof Auth User ID Resolution
     if (rawId.includes('@')) {
       userEmail = rawId;
+      const cleanInputEmail = rawId.trim().toLowerCase();
+
+      // Try finding via Supabase Auth listUsers
       const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-      const found = (listData?.users as any[])?.find(u => u.email?.toLowerCase() === rawId.toLowerCase());
+      const found = (listData?.users as any[])?.find(u => u.email?.toLowerCase() === cleanInputEmail);
+      
       if (found) {
         authUserId = found.id;
         userEmail = found.email || userEmail;
+      } else {
+        // Fallback: Check our own database tables to find the linked user_id for this email
+        const tablesToCheck = ['user_plates', 'messages', 'admin_users', 'subscriptions', 'passes', 'user_access'];
+        for (const tbl of tablesToCheck) {
+          const { data: tblData } = await supabaseAdmin
+            .from(tbl)
+            .select('user_id')
+            .ilike('email', cleanInputEmail)
+            .maybeSingle();
+
+          if (tblData?.user_id) {
+            authUserId = tblData.user_id;
+            break;
+          }
+        }
       }
     } else {
       authUserId = rawId;
@@ -63,18 +83,20 @@ export async function DELETE(
     const idTargets = [authUserId, rawId].filter(Boolean) as string[];
     const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : (rawId.includes('@') ? rawId.trim().toLowerCase() : null);
 
-    // 1. Delete from Supabase Auth permanently and wait for cache propagation
-    if (authUserId && !authUserId.includes('@')) {
+    // 2. Delete from Supabase Auth permanently on the FIRST click
+    if (authUserId) {
       const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
       if (deleteAuthError) {
         console.warn('Auth delete warning (user may already be deleted):', deleteAuthError.message);
       } else {
-        // Stabilization delay to allow Supabase Auth listUsers() cache to clear before responding
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Stabilization delay to allow Supabase Auth cache to clear
+        await new Promise((resolve) => setTimeout(resolve, 800));
       }
+    } else {
+      console.warn('Could not resolve Auth UUID for target:', rawId);
     }
 
-    // 2. Comprehensive multi-table cleanup
+    // 3. Comprehensive multi-table cleanup
     const tables = [
       'user_plates',
       'plate_vault',
