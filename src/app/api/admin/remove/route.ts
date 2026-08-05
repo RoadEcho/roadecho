@@ -55,7 +55,7 @@ export async function DELETE(request: NextRequest) {
     // 2. Delete the user from Supabase Auth so they can no longer log in or reappear
     const { data: listUsersData, error: listErr } = await supabaseAdmin.auth.admin.listUsers()
     if (!listErr && listUsersData?.users) {
-      const targetUser = listUsersData.users.find(u => u.email?.toLowerCase() === cleanEmail)
+      const targetUser = listUsersData.users.find((u: any) => u.email?.toLowerCase() === cleanEmail)
       if (targetUser) {
         await supabaseAdmin.auth.admin.deleteUser(targetUser.id)
       }
