@@ -55,6 +55,12 @@ interface AdminUser {
   created_at: string
 }
 
+interface SenderUser {
+  email: string
+  messageCount: number
+  lastMessageAt: string
+}
+
 interface UnlockRecord {
   id: string
   email: string
@@ -93,6 +99,7 @@ export default function AdminDashboard() {
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [admins, setAdmins] = useState<AdminUser[]>([])
+  const [senders, setSenders] = useState<SenderUser[]>([])
   const [unlocksList, setUnlocksList] = useState<UnlockRecord[]>([])
   const [sharesList, setSharesList] = useState<ShareRecord[]>([])
   const [messagesList, setMessagesList] = useState<MessageRecord[]>([])
@@ -201,6 +208,14 @@ export default function AdminDashboard() {
       if (adminRes.ok) {
         const adminData = await adminRes.json()
         setAdmins(adminData.admins || [])
+      }
+
+      const senderRes = await fetch('/api/admin/senders', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      })
+      if (senderRes.ok) {
+        const senderData = await senderRes.json()
+        setSenders(senderData.senders || [])
       }
 
       const unlocksRes = await fetch('/api/admin/unlocks', {
@@ -552,6 +567,28 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Message Senders Directory */}
+        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+          <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Message Senders Directory</h2>
+          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+            {senders.length > 0 ? (
+              senders.map((s, idx) => (
+                <div key={idx} className="flex justify-between items-center p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs">
+                  <div>
+                    <p className="font-medium text-white">{s.email}</p>
+                    <p className="text-[11px] text-slate-500">Total Sent: {s.messageCount}</p>
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {new Date(s.lastMessageAt).toLocaleDateString()}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-slate-500 text-xs italic text-center py-4">No message senders recorded.</p>
+            )}
+          </div>
+        </div>
+
         {/* Vault Unlocks Log */}
         <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
           <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Vault Unlocks Directory</h2>
@@ -609,7 +646,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Registered User Directory */}
-        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+        <div className="p-5 bg-slate-950 border border-slate-800 rounded-xl space-y-3 md:col-span-2">
           <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Registered User Directory</h2>
           <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
             {userStats?.users && userStats.users.length > 0 ? (
