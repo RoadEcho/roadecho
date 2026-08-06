@@ -162,7 +162,7 @@ export default function VaultDashboard() {
         console.error('Profile fetch warning:', e)
       }
 
-      // Fetch subscription cancellation metrics (Step 2)
+      // Fetch subscription cancellation metrics and period end accurately from the table
       try {
         const { data: subData } = await supabase
           .from('subscriptions')
@@ -535,7 +535,7 @@ export default function VaultDashboard() {
         </div>
       )}
 
-      {/* Subscription Banners (Step 3: Scheduled Cancellation vs Active Pro) */}
+      {/* Subscription Banners (Scheduled Cancellation vs Active Pro) */}
       {cancelAtPeriodEnd && currentPeriodEnd ? (
         <div className="mb-8 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 text-amber-300">
           <div>
