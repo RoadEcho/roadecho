@@ -38,7 +38,21 @@ export async function POST(request: Request) {
     const referrerId = session.metadata?.referrerId
     const subscriptionId = session.subscription as string
     const customerId = session.customer as string
-    const clientReferenceId = session.client_reference_id || session.metadata?.user_id || session.metadata?.userId
+    const customerEmail = session.customer_details?.email || session.customer_email
+    
+    // Robust User ID Resolution with email fallback
+    let clientReferenceId = session.client_reference_id || session.metadata?.user_id || session.metadata?.userId
+    if (!clientReferenceId && customerEmail) {
+      const { data: profileMatch } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', customerEmail)
+        .maybeSingle()
+      if (profileMatch) {
+        clientReferenceId = profileMatch.id
+      }
+    }
+
     const purchaseType = session.metadata?.type
 
     // Handle 24-Hour Pass Purchase -> Increment Stored Passes Vault
@@ -96,7 +110,7 @@ export async function POST(request: Request) {
         onConflict: 'stripe_subscription_id'
       })
 
-      // Sync profile with stripe_customer_id and status so dashboard & portal work
+      // Sync profile with stripe_customer_id and status (set tier to 'pro' so vault dashboard UI renders cancel/management options)
       if (customerId && clientReferenceId) {
         await supabase
           .from('profiles')
@@ -104,7 +118,7 @@ export async function POST(request: Request) {
             stripe_customer_id: customerId,
             stripe_subscription_id: subscription.id,
             subscription_status: statusToSave,
-            subscription_tier: 'subscriber',
+            subscription_tier: 'pro',
             subscription_started_at: new Date().toISOString(),
           })
           .eq('id', clientReferenceId)
@@ -138,7 +152,6 @@ export async function POST(request: Request) {
     }
 
     // Send Purchase Confirmation & Receipt Email
-    const customerEmail = session.customer_details?.email || session.customer_email
     if (customerEmail) {
       try {
         await resend.emails.send({
@@ -183,11 +196,12 @@ export async function POST(request: Request) {
       onConflict: 'stripe_subscription_id'
     })
 
-    // Update profile subscription status
+    // Update profile subscription status & tier
     await supabase
       .from('profiles')
       .update({
         subscription_status: statusToSave,
+        subscription_tier: 'pro',
         stripe_subscription_id: subscription.id,
       })
       .eq('stripe_customer_id', subscription.customer as string)
