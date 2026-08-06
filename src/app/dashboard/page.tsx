@@ -727,7 +727,7 @@ export default function VaultDashboard() {
       {/* GDPR Data Deletion Section */}
       <div className="mb-8 p-5 bg-red-950/20 border border-red-900/40 rounded-xl space-y-3">
         <div>
-          <h3 className="font-bold text-red-400 text-sm">🔒 Data Privacy &amp; Deletion (GDPR)</h3>
+          <h3 className="font-bold text-red-400 text-sm">🔒 Data Privacy & Deletion (GDPR)</h3>
           <p className="text-xs text-slate-400">Permanently erase your account, remove all claimed plates, and clear your message vault history.</p>
         </div>
         <button
