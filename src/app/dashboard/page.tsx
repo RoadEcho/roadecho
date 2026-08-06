@@ -44,6 +44,7 @@ export default function VaultDashboard() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
 
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('inactive')
+  const [subscriptionTier, setSubscriptionTier] = useState<string>('free')
   const [subscriptionStartedAt, setSubscriptionStartedAt] = useState<string | null>(null)
   const [messageAgreements, setMessageAgreements] = useState<{ [messageId: string]: boolean }>({})
   const [isPortalLoading, setIsPortalLoading] = useState(false)
@@ -126,19 +127,32 @@ export default function VaultDashboard() {
         setPlates(data.plates || [])
         setMessages(data.messages || [])
         setHasAccess(data.hasAccess || false)
+
+        if (data.profile) {
+          setSubscriptionStatus(data.profile.subscription_status || 'inactive')
+          setSubscriptionTier(data.profile.subscription_tier || 'free')
+          setSubscriptionStartedAt(data.profile.subscription_started_at || null)
+        }
+
+        if (data.vault) {
+          setAvailablePasses(data.vault.available_passes || 0)
+          setPassExpiresAt(data.vault.pass_expires_at || null)
+        }
       } else {
         setError(data.error || 'Failed to load vault data.')
       }
 
+      // Fallback direct profile fetch to guarantee state synchronization
       try {
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('subscription_status, subscription_started_at')
+          .select('subscription_status, subscription_tier, subscription_started_at')
           .eq('id', currentUserId)
           .maybeSingle()
 
         if (profileData) {
           setSubscriptionStatus(profileData.subscription_status || 'inactive')
+          setSubscriptionTier(profileData.subscription_tier || 'free')
           setSubscriptionStartedAt(profileData.subscription_started_at || null)
         }
       } catch (e) {
@@ -451,7 +465,7 @@ export default function VaultDashboard() {
   }
 
   const isPassActive = passExpiresAt && new Date(passExpiresAt) > new Date()
-  const isSubscriberActive = subscriptionStatus === 'active' || subscriptionStatus === 'canceling'
+  const isSubscriberActive = subscriptionStatus === 'active' || subscriptionStatus === 'canceling' || subscriptionTier === 'pro'
 
   if (loading) {
     return (
@@ -629,7 +643,7 @@ export default function VaultDashboard() {
               <button
                 onClick={() => handleCheckout('subscription')}
                 disabled={!agreedToCheckoutTerms}
-                className="flex-1 sm:flex-none px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg transition text-slate-950 cursor-pointer disabled:opacity-40"
+                className="flex-1 sm:flex-none px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg transition cursor-pointer disabled:opacity-40"
               >
                 Subscribe ($2.99/mo)
               </button>
