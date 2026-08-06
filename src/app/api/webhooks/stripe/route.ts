@@ -10,6 +10,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 })
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'support@roadecho.vercel.app'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -75,6 +76,50 @@ export async function POST(request: Request) {
         }, {
           onConflict: 'user_id'
         })
+
+      // Send 24-Hour Pass Purchase Thank You Email to Customer
+      if (customerEmail) {
+        try {
+          await resend.emails.send({
+            from: 'RoadEcho <onboarding@resend.dev>',
+            to: [customerEmail],
+            subject: '[RoadEcho] Your 24-Hour Pass is Ready!',
+            text: `Thank you for purchasing a RoadEcho 24-Hour Pass! Your pass has been safely stored in your vault. View your dashboard: ${siteUrl}/dashboard`,
+            html: `
+              <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                  <img src="${logoUrl}" alt="RoadEcho Logo" style="height: 48px; object-fit: contain;" />
+                </div>
+                <h2 style="color: #06b6d4; margin-top: 0; font-size: 18px;">24-Hour Pass Purchased!</h2>
+                <p>Thank you for purchasing a RoadEcho 24-Hour Pass. Your pass has been successfully added to your vault and is ready to activate whenever you need it.</p>
+                <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #06b6d4; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 12px;">Open Dashboard</a>
+              </div>
+            `
+          })
+        } catch (emailErr) {
+          console.error('Failed to send pass purchase email:', emailErr)
+        }
+      }
+
+      // Send New 24-Hour Pass Purchase Alert to Admin
+      try {
+        await resend.emails.send({
+          from: 'RoadEcho <onboarding@resend.dev>',
+          to: [ADMIN_EMAIL],
+          subject: '[Admin] 🔑 New 24-Hour Pass Purchased',
+          text: `A new 24-Hour Pass was purchased by ${customerEmail || 'Unknown'} (User ID: ${clientReferenceId || 'Unknown'}).`,
+          html: `
+            <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
+              <h2 style="color: #06b6d4; margin-top: 0; font-size: 18px;">New Pass Purchase</h2>
+              <p>A user has successfully purchased a 24-Hour Unlock Pass.</p>
+              <p><strong>Customer Email:</strong> ${customerEmail || 'Unknown'}</p>
+              <p><strong>User ID:</strong> ${clientReferenceId || 'Unknown'}</p>
+            </div>
+          `
+        })
+      } catch (adminEmailErr) {
+        console.error('Failed to send admin pass alert:', adminEmailErr)
+      }
     }
 
     // Handle Unlocks / Analytics Tracking
@@ -146,6 +191,51 @@ export async function POST(request: Request) {
             subscription_started_at: new Date().toISOString(),
           })
           .eq('id', clientReferenceId)
+
+        // Send Pro Subscription Thank You Email to Customer
+        if (customerEmail) {
+          try {
+            await resend.emails.send({
+              from: 'RoadEcho <onboarding@resend.dev>',
+              to: [customerEmail],
+              subject: '[RoadEcho] Welcome to RoadEcho Pro!',
+              text: `Thank you for subscribing to RoadEcho Pro! Your subscription is now active. View your dashboard: ${siteUrl}/dashboard`,
+              html: `
+                <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
+                  <div style="text-align: center; margin-bottom: 20px;">
+                    <img src="${logoUrl}" alt="RoadEcho Logo" style="height: 48px; object-fit: contain;" />
+                  </div>
+                  <h2 style="color: #06b6d4; margin-top: 0; font-size: 18px;">Welcome to RoadEcho Pro!</h2>
+                  <p>Thank you for subscribing to RoadEcho Pro. Your subscription is now active, giving you full access to your plate vault, continuous real-time alerts, and priority message decryption.</p>
+                  <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #06b6d4; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 12px;">Open Dashboard</a>
+                </div>
+              `
+            })
+          } catch (emailErr) {
+            console.error('Failed to send customer subscription email:', emailErr)
+          }
+        }
+
+        // Send New Pro Subscription Alert to Admin
+        try {
+          await resend.emails.send({
+            from: 'RoadEcho <onboarding@resend.dev>',
+            to: [ADMIN_EMAIL],
+            subject: '[Admin] 🔔 New Pro Subscription Purchased',
+            text: `A new Pro subscription was purchased by ${customerEmail || 'Unknown'} (User ID: ${clientReferenceId || 'Unknown'}, Sub ID: ${subscription.id}).`,
+            html: `
+              <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
+                <h2 style="color: #06b6d4; margin-top: 0; font-size: 18px;">New Pro Subscriber</h2>
+                <p>A user has successfully subscribed to RoadEcho Pro.</p>
+                <p><strong>Customer Email:</strong> ${customerEmail || 'Unknown'}</p>
+                <p><strong>User ID:</strong> ${clientReferenceId || 'Unknown'}</p>
+                <p><strong>Subscription ID:</strong> ${subscription.id}</p>
+              </div>
+            `
+          })
+        } catch (adminEmailErr) {
+          console.error('Failed to send admin subscription alert:', adminEmailErr)
+        }
       }
     }
 
@@ -173,30 +263,6 @@ export async function POST(request: Request) {
       await supabase.from('reward_events').insert([
         { user_id: referrerId, reward_type: 'subscription_bonus' }
       ])
-    }
-
-    // Send Purchase Confirmation & Receipt Email
-    if (customerEmail) {
-      try {
-        await resend.emails.send({
-          from: 'RoadEcho <onboarding@resend.dev>',
-          to: [customerEmail],
-          subject: '[RoadEcho] Purchase Confirmation & Receipt',
-          text: `Thank you for your purchase with RoadEcho. Your payment has been successfully processed. View your dashboard: ${siteUrl}/dashboard`,
-          html: `
-            <div style="font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 500px; margin: auto;">
-              <div style="text-align: center; margin-bottom: 20px;">
-                <img src="${logoUrl}" alt="RoadEcho Logo" style="height: 48px; object-fit: contain;" />
-              </div>
-              <h2 style="color: #06b6d4; margin-top: 0; font-size: 18px;">Purchase Successful!</h2>
-              <p>Thank you for choosing RoadEcho. Your payment has been successfully processed and your vault passes or subscription have been updated.</p>
-              <a href="${siteUrl}/dashboard" style="display: inline-block; background-color: #06b6d4; color: #0f172a; padding: 10px 20px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 12px;">Open Dashboard</a>
-            </div>
-          `
-        })
-      } catch (emailErr) {
-        console.error('Failed to send purchase confirmation email:', emailErr)
-      }
     }
   }
 
