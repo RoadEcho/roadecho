@@ -13,39 +13,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid messages payload" }, { status: 400 });
     }
 
-    const assistantId = process.env.OPENAI_ASSISTANT_ID;
-    if (!assistantId) {
-      return NextResponse.json({ error: "OpenAI Assistant ID not configured" }, { status: 500 });
+    const vectorStoreId = process.env.OPENAI_VECTOR_STORE_ID;
+    if (!vectorStoreId) {
+      return NextResponse.json({ error: "Vector store ID not configured" }, { status: 500 });
     }
 
-    // Get the last user message from the array
+    // Extract the latest user message
     const lastMessage = messages[messages.length - 1].content;
 
-    // 1. Create a thread
-    const thread = await openai.beta.threads.create();
-
-    // 2. Add the user's message to the thread
-    await openai.beta.threads.messages.create(thread.id, {
-      role: "user",
-      content: lastMessage,
+    // Use OpenAI's Responses API with native file search and your vector store
+    const response = await openai.responses.create({
+      model: "gpt-4o-mini",
+      instructions: "You are the official 24/7 AI support assistant for RoadEcho. Answer customer inquiries strictly using the uploaded platform documentation (DPPA compliance, zero-knowledge SHA-256 hashing, Section 230 safe harbor, vault pricing, and GDPR rights). Maintain a professional, concise, and helpful tone.",
+      input: lastMessage,
+      tools: [
+        {
+          type: "file_search",
+          vector_store_ids: [vectorStoreId],
+        },
+      ],
     });
 
-    // 3. Run the assistant using your Assistant ID (which has the vector store attached)
-    const run = await openai.beta.threads.runs.createAndPoll(thread.id, {
-      assistant_id: assistantId,
-    });
+    const reply = response.output_text || "No response generated.";
 
-    if (run.status === "completed") {
-      const threadMessages = await openai.beta.threads.messages.list(run.thread_id);
-      const assistantMessage = threadMessages.data.find((m) => m.role === "assistant");
-      
-      const content = assistantMessage?.content[0];
-      const reply = content && content.type === "text" ? content.text.value : "No response generated.";
-
-      return NextResponse.json({ reply });
-    } else {
-      return NextResponse.json({ error: `Run ended with status: ${run.status}` }, { status: 500 });
-    }
+    return NextResponse.json({ reply });
   } catch (error: any) {
     console.error("Support Assistant API Error:", error);
     return NextResponse.json(
