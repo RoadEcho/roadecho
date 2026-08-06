@@ -1,4 +1,4 @@
-import SupportChat from "@/components/SupportChat";
+import SupportChat from "../../components/SupportChat";
 
 export default function FAQPage() {
   return (
