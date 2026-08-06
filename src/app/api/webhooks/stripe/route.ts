@@ -62,15 +62,21 @@ export async function POST(request: Request) {
         })
     }
 
-    // Track/Update Subscription for Admin Total Subscribers Metric & Profiles Table (Crucial for Customer Portal)
+    // Track/Update Subscription for Admin Total Subscribers Metric & Profiles Table
     if (subscriptionId && clientReferenceId) {
       const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as any
       
+      const cancelAtPeriodEnd = subscription.cancel_at_period_end
+      let statusToSave = subscription.status
+      if (['active', 'trialing'].includes(statusToSave)) {
+        statusToSave = cancelAtPeriodEnd ? 'canceling' : 'active'
+      }
+
       // Upsert into subscriptions table
       await supabase.from('subscriptions').upsert({
         stripe_subscription_id: subscription.id,
         user_id: clientReferenceId || customerId,
-        status: subscription.status,
+        status: statusToSave,
         price_id: subscription.items.data[0].price.id,
         current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
         updated_at: new Date().toISOString(),
@@ -78,13 +84,14 @@ export async function POST(request: Request) {
         onConflict: 'stripe_subscription_id'
       })
 
-      // Sync profile with stripe_customer_id and active status so dashboard & portal work
-      if (customerId) {
+      // Sync profile with stripe_customer_id and status so dashboard & portal work
+      if (customerId && clientReferenceId) {
         await supabase
           .from('profiles')
           .update({
             stripe_customer_id: customerId,
-            subscription_status: subscription.status,
+            stripe_subscription_id: subscription.id,
+            subscription_status: statusToSave,
             subscription_tier: 'subscriber',
             subscription_started_at: new Date().toISOString(),
           })
@@ -147,10 +154,17 @@ export async function POST(request: Request) {
   // 2. Handle Subscription Updates (Renewals/Changes/Cancellations period end)
   if (event.type === 'customer.subscription.updated') {
     const subscription = event.data.object as any
+    const cancelAtPeriodEnd = subscription.cancel_at_period_end
+    let statusToSave = subscription.status
 
+    if (['active', 'trialing'].includes(statusToSave)) {
+      statusToSave = cancelAtPeriodEnd ? 'canceling' : 'active'
+    }
+
+    // Update subscriptions table
     await supabase.from('subscriptions').upsert({
       stripe_subscription_id: subscription.id,
-      status: subscription.status,
+      status: statusToSave,
       current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
       updated_at: new Date().toISOString(),
     }, {
@@ -161,7 +175,8 @@ export async function POST(request: Request) {
     await supabase
       .from('profiles')
       .update({
-        subscription_status: subscription.status,
+        subscription_status: statusToSave,
+        stripe_subscription_id: subscription.id,
       })
       .eq('stripe_customer_id', subscription.customer as string)
   }
@@ -181,6 +196,7 @@ export async function POST(request: Request) {
       .update({
         subscription_status: 'canceled',
         subscription_tier: 'free',
+        stripe_subscription_id: null,
       })
       .eq('stripe_customer_id', subscription.customer as string)
 
