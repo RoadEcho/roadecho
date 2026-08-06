@@ -88,7 +88,7 @@ export async function POST(request: Request) {
         await supabase.from('unlocks').insert({
           id: crypto.randomUUID(),
           user_id: clientReferenceId,
-          message_id: isMessageUnlock ? messageId : null, // Fixed: null satisfies the UUID column requirement
+          message_id: isMessageUnlock ? messageId : null,
           amount: amountTotal,
           created_at: new Date().toISOString(),
         })
@@ -96,48 +96,53 @@ export async function POST(request: Request) {
     }
 
     // Track/Update Subscription for Admin Total Subscribers Metric & Profiles Table
-    if (subscriptionId && clientReferenceId) {
+    if (subscriptionId) {
       const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as any
       
+      // Fallback user ID resolution from subscription metadata if clientReferenceId is still missing
+      if (!clientReferenceId && (subscription.metadata?.userId || subscription.metadata?.user_id)) {
+        clientReferenceId = subscription.metadata.userId || subscription.metadata.user_id
+      }
+
       const cancelAtPeriodEnd = subscription.cancel_at_period_end
       let statusToSave = subscription.status
       if (['active', 'trialing'].includes(statusToSave)) {
         statusToSave = cancelAtPeriodEnd ? 'canceling' : 'active'
       }
 
-      // Check if subscription record already exists to safely insert or update
-      const { data: existingSub } = await supabase
-        .from('subscriptions')
-        .select('id')
-        .eq('stripe_subscription_id', subscription.id)
-        .maybeSingle()
+      if (clientReferenceId) {
+        // Check if subscription record already exists to safely insert or update
+        const { data: existingSub } = await supabase
+          .from('subscriptions')
+          .select('id')
+          .eq('stripe_subscription_id', subscription.id)
+          .maybeSingle()
 
-      if (existingSub) {
-        await supabase.from('subscriptions').update({
-          status: statusToSave,
-          price_id: subscription.items.data[0].price.id,
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-          updated_at: new Date().toISOString(),
-        }).eq('stripe_subscription_id', subscription.id)
-      } else {
-        await supabase.from('subscriptions').insert({
-          id: crypto.randomUUID(),
-          stripe_subscription_id: subscription.id,
-          user_id: clientReferenceId,
-          status: statusToSave,
-          price_id: subscription.items.data[0].price.id,
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-      }
+        if (existingSub) {
+          await supabase.from('subscriptions').update({
+            status: statusToSave,
+            price_id: subscription.items.data[0].price.id,
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            updated_at: new Date().toISOString(),
+          }).eq('stripe_subscription_id', subscription.id)
+        } else {
+          await supabase.from('subscriptions').insert({
+            id: crypto.randomUUID(),
+            stripe_subscription_id: subscription.id,
+            user_id: clientReferenceId,
+            status: statusToSave,
+            price_id: subscription.items.data[0].price.id,
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+        }
 
-      // Sync profile with stripe_customer_id and status (sets tier to 'pro' so vault dashboard UI renders Pro banner & management options)
-      if (customerId && clientReferenceId) {
+        // CRITICAL: Synchronize profile data so dashboard Pro status and cancellation banner render correctly
         await supabase
           .from('profiles')
           .update({
-            stripe_customer_id: customerId,
+            stripe_customer_id: customerId || subscription.customer,
             stripe_subscription_id: subscription.id,
             subscription_status: statusToSave,
             subscription_tier: 'pro',
@@ -208,6 +213,8 @@ export async function POST(request: Request) {
       statusToSave = cancelAtPeriodEnd ? 'canceling' : 'active'
     }
 
+    let userId = subscription.metadata?.userId || subscription.metadata?.user_id
+
     // Check if subscription record exists
     const { data: existingSub } = await supabase
       .from('subscriptions')
@@ -216,6 +223,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (existingSub) {
+      userId = userId || existingSub.user_id
       await supabase.from('subscriptions').update({
         status: statusToSave,
         current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
@@ -230,10 +238,11 @@ export async function POST(request: Request) {
         .maybeSingle()
 
       if (profileMatch) {
+        userId = profileMatch.id
         await supabase.from('subscriptions').insert({
           id: crypto.randomUUID(),
           stripe_subscription_id: subscription.id,
-          user_id: profileMatch.id,
+          user_id: userId,
           status: statusToSave,
           current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
           created_at: new Date().toISOString(),
@@ -242,15 +251,26 @@ export async function POST(request: Request) {
       }
     }
 
-    // Update profile subscription status & tier
-    await supabase
-      .from('profiles')
-      .update({
-        subscription_status: statusToSave,
-        subscription_tier: 'pro',
-        stripe_subscription_id: subscription.id,
-      })
-      .eq('stripe_customer_id', subscription.customer as string)
+    // Update profile subscription status & tier reliably by user ID or customer ID
+    if (userId) {
+      await supabase
+        .from('profiles')
+        .update({
+          subscription_status: statusToSave,
+          subscription_tier: 'pro',
+          stripe_subscription_id: subscription.id,
+        })
+        .eq('id', userId)
+    } else {
+      await supabase
+        .from('profiles')
+        .update({
+          subscription_status: statusToSave,
+          subscription_tier: 'pro',
+          stripe_subscription_id: subscription.id,
+        })
+        .eq('stripe_customer_id', subscription.customer as string)
+    }
   }
 
   // 3. Handle Subscription Cancellations & Expirations
