@@ -42,6 +42,11 @@ export default function VaultDashboard() {
   const [timeLeft, setTimeLeft] = useState<string>('')
   const [userId, setUserId] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('inactive')
+  const [subscriptionStartedAt, setSubscriptionStartedAt] = useState<string | null>(null)
+  const [messageAgreements, setMessageAgreements] = useState<{ [messageId: string]: boolean }>({})
+  const [isPortalLoading, setIsPortalLoading] = useState(false)
   
   const [plateInput, setPlateInput] = useState('')
   const [stateInput, setStateInput] = useState('DE')
@@ -126,6 +131,21 @@ export default function VaultDashboard() {
       }
 
       try {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('subscription_status, subscription_started_at')
+          .eq('id', currentUserId)
+          .maybeSingle()
+
+        if (profileData) {
+          setSubscriptionStatus(profileData.subscription_status || 'inactive')
+          setSubscriptionStartedAt(profileData.subscription_started_at || null)
+        }
+      } catch (e) {
+        console.error('Profile fetch warning:', e)
+      }
+
+      try {
         const { data: vaultData } = await supabase
           .from('user_pass_vault')
           .select('available_passes, pass_expires_at')
@@ -136,7 +156,6 @@ export default function VaultDashboard() {
           setAvailablePasses(vaultData.available_passes || 0)
           setPassExpiresAt(vaultData.pass_expires_at || null)
         } else {
-          // Lazy-provision vault record for brand new users
           const { data: newVault } = await supabase
             .from('user_pass_vault')
             .insert([{ user_id: currentUserId, available_passes: 0 }])
@@ -257,12 +276,7 @@ export default function VaultDashboard() {
     }
   }
 
-  const handleCheckout = async (type: 'pass' | 'subscription') => {
-    if (!agreedToCheckoutTerms) {
-      setError('You must agree to the terms before purchasing.')
-      return
-    }
-
+  const handleCheckout = async (type: 'pass' | 'subscription', plateHash?: string, messageId?: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const currentUserId = session?.user?.id
@@ -270,7 +284,7 @@ export default function VaultDashboard() {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, userId: currentUserId }),
+        body: JSON.stringify({ type, userId: currentUserId, plateHash, messageId }),
       })
 
       const data = await res.json()
@@ -281,6 +295,38 @@ export default function VaultDashboard() {
       }
     } catch (err: any) {
       setError('An error occurred during checkout.')
+    }
+  }
+
+  const handleManageSubscription = async () => {
+    setIsPortalLoading(true)
+    setError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
+      }
+
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ type: 'portal', userId }),
+      })
+
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setError(data.error || 'Failed to open billing portal.')
+        setIsPortalLoading(false)
+      }
+    } catch (err: any) {
+      setError('An error occurred opening the billing portal.')
+      setIsPortalLoading(false)
     }
   }
 
@@ -405,6 +451,7 @@ export default function VaultDashboard() {
   }
 
   const isPassActive = passExpiresAt && new Date(passExpiresAt) > new Date()
+  const isSubscriberActive = subscriptionStatus === 'active' || subscriptionStatus === 'canceling'
 
   if (loading) {
     return (
@@ -451,6 +498,30 @@ export default function VaultDashboard() {
             className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition cursor-pointer"
           >
             Sign Out
+          </button>
+        </div>
+      )}
+
+      {/* Active Subscriber Status Banner & Management */}
+      {isSubscriberActive && (
+        <div className="mb-8 p-4 bg-cyan-950/40 border border-cyan-500/40 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 bg-cyan-500 text-slate-950 text-xs font-bold rounded">PRO SUBSCRIBER</span>
+              <span className="text-xs text-cyan-300 font-medium">Active Vault & Real-Time Alerts</span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              {subscriptionStatus === 'canceling' 
+                ? 'Your subscription is set to cancel at the end of the current billing period.' 
+                : `Active subscriber since ${subscriptionStartedAt ? new Date(subscriptionStartedAt).toLocaleDateString() : 'recently'}.`}
+            </p>
+          </div>
+          <button
+            onClick={handleManageSubscription}
+            disabled={isPortalLoading}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold rounded-lg border border-slate-700 transition cursor-pointer whitespace-nowrap"
+          >
+            {isPortalLoading ? 'Loading Portal...' : 'Manage / Cancel Subscription'}
           </button>
         </div>
       )}
@@ -539,45 +610,48 @@ export default function VaultDashboard() {
         </div>
       </div>
 
-      <div className="mb-8 p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-cyan-400">Unlock Full Access</h3>
-            <p className="text-xs text-slate-400">Get an instant 24-hour pass or subscribe for continuous alerts.</p>
+      {/* Subscription CTA if not active */}
+      {!isSubscriberActive && (
+        <div className="mb-8 p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-cyan-400">Unlock Full Access</h3>
+              <p className="text-xs text-slate-400">Get an instant 24-hour pass or subscribe for continuous alerts.</p>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => handleCheckout('pass')}
+                disabled={!agreedToCheckoutTerms}
+                className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg transition text-cyan-300 cursor-pointer disabled:opacity-40"
+              >
+                24-Hour Pass ($1.99)
+              </button>
+              <button
+                onClick={() => handleCheckout('subscription')}
+                disabled={!agreedToCheckoutTerms}
+                className="flex-1 sm:flex-none px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg transition text-slate-950 cursor-pointer disabled:opacity-40"
+              >
+                Subscribe ($2.99/mo)
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => handleCheckout('pass')}
-              disabled={!agreedToCheckoutTerms}
-              className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg transition text-cyan-300 cursor-pointer disabled:opacity-40"
-            >
-              24-Hour Pass ($1.99)
-            </button>
-            <button
-              onClick={() => handleCheckout('subscription')}
-              disabled={!agreedToCheckoutTerms}
-              className="flex-1 sm:flex-none px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg transition text-slate-950 cursor-pointer disabled:opacity-40"
-            >
-              Subscribe ($2.99/mo)
-            </button>
-          </div>
-        </div>
 
-        <div className="flex items-start space-x-2 text-xs text-slate-400 pt-2 border-t border-slate-900">
-          <input
-            type="checkbox"
-            id="checkout-terms"
-            checked={agreedToCheckoutTerms}
-            onChange={(e) => setAgreedToCheckoutTerms(e.target.checked)}
-            className="mt-0.5 accent-cyan-500 cursor-pointer"
-          />
-          <label htmlFor="checkout-terms" className="cursor-pointer leading-relaxed">
-            Fees cover secure digital decryption, delivery, and alerts. I agree to the{' '}
-            <a href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Terms of Service</a> and{' '}
-            <a href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Privacy Policy</a>.
-          </label>
+          <div className="flex items-start space-x-2 text-xs text-slate-400 pt-2 border-t border-slate-900">
+            <input
+              type="checkbox"
+              id="checkout-terms"
+              checked={agreedToCheckoutTerms}
+              onChange={(e) => setAgreedToCheckoutTerms(e.target.checked)}
+              className="mt-0.5 accent-cyan-500 cursor-pointer"
+            />
+            <label htmlFor="checkout-terms" className="cursor-pointer leading-relaxed">
+              Fees cover secure digital decryption, delivery, and alerts. I agree to the{' '}
+              <a href="/terms" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Terms of Service</a> and{' '}
+              <a href="/privacy" target="_blank" className="text-cyan-400 underline hover:text-cyan-300">Privacy Policy</a>.
+            </label>
+          </div>
         </div>
-      </div>
+      )}
 
       {error && <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-sm">{error}</div>}
 
@@ -639,69 +713,86 @@ export default function VaultDashboard() {
         {messages.length === 0 ? (
           <p className="text-slate-500 text-sm italic">No messages found for your plates.</p>
         ) : (
-          messages.map((m) => (
-            <div key={m.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
-              <div className="flex flex-col sm:flex-row justify-between text-xs text-slate-400 font-mono gap-1 border-b border-slate-900 pb-2">
-                <div>
-                  <span className="text-cyan-400 font-bold">Plate:</span> {m.plate_display || m.license_plate.substring(0, 12)} ({m.plate_state || m.state_region})
-                </div>
-                <div>
-                  <span className="text-cyan-400 font-bold">Received:</span> {new Date(m.created_at).toLocaleString()}
-                </div>
-              </div>
-
-              <div className="flex justify-between text-xs text-slate-500 font-mono">
-                <span>Location Sent: {m.state_region}, {m.country || 'USA'}</span>
-              </div>
-
-              {hasAccess || isPassActive ? (
-                <div className="p-3 bg-slate-900 border border-cyan-500/50 rounded-lg space-y-1">
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs text-cyan-400 font-semibold">🔓 Unlocked Message</p>
-                    {isPassActive && (
-                      <span className="text-xs font-mono text-emerald-400">
-                        Expires in: {timeLeft}
-                      </span>
-                    )}
+          messages.map((m) => {
+            const isAgreed = !!messageAgreements[m.id]
+            return (
+              <div key={m.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+                <div className="flex flex-col sm:flex-row justify-between text-xs text-slate-400 font-mono gap-1 border-b border-slate-900 pb-2">
+                  <div>
+                    <span className="text-cyan-400 font-bold">Plate:</span> {m.plate_display || m.license_plate.substring(0, 12)} ({m.plate_state || m.state_region})
                   </div>
-                  <p className="text-slate-100 text-sm">{m.message}</p>
+                  <div>
+                    <span className="text-cyan-400 font-bold">Received:</span> {new Date(m.created_at).toLocaleString()}
+                  </div>
                 </div>
-              ) : (
-                <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-center space-y-2">
-                  <p className="text-sm font-semibold text-cyan-400">🔒 Secure Message Waiting in Vault</p>
-                  <p className="text-xs text-slate-400">Unlock this message payload or use a stored pass below.</p>
-                  
-                  {availablePasses > 0 && (
-                    <div className="pb-2">
+
+                <div className="flex justify-between text-xs text-slate-500 font-mono">
+                  <span>Location Sent: {m.state_region}, {m.country || 'USA'}</span>
+                </div>
+
+                {hasAccess || isPassActive || isSubscriberActive ? (
+                  <div className="p-3 bg-slate-900 border border-cyan-500/50 rounded-lg space-y-1">
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-cyan-400 font-semibold">🔓 Unlocked Message</p>
+                      {isPassActive && !isSubscriberActive && (
+                        <span className="text-xs font-mono text-emerald-400">
+                          Expires in: {timeLeft}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-slate-100 text-sm">{m.message}</p>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-center space-y-3">
+                    <p className="text-sm font-semibold text-cyan-400">🔒 Secure Message Waiting in Vault</p>
+                    <p className="text-xs text-slate-400">Unlock this message payload or use a stored pass below.</p>
+                    
+                    {availablePasses > 0 && (
+                      <div>
+                        <button
+                          onClick={handleActivatePass}
+                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition shadow-md cursor-pointer"
+                        >
+                          🔑 Unlock with Stored Pass ({availablePasses} available)
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Per-message terms checkbox */}
+                    <div className="flex items-start space-x-2 text-xs text-slate-400 pt-2 border-t border-slate-800 text-left">
+                      <input
+                        type="checkbox"
+                        id={`agree-msg-${m.id}`}
+                        checked={isAgreed}
+                        onChange={(e) => setMessageAgreements({ ...messageAgreements, [m.id]: e.target.checked })}
+                        className="mt-0.5 accent-cyan-500 cursor-pointer"
+                      />
+                      <label htmlFor={`agree-msg-${m.id}`} className="cursor-pointer leading-relaxed">
+                        I agree to the <a href="/terms" target="_blank" className="text-cyan-400 underline">Terms</a> &amp; digital decryption fee ($1.99).
+                      </label>
+                    </div>
+
+                    <div className="flex justify-center gap-2 pt-1">
                       <button
-                        onClick={handleActivatePass}
-                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition shadow-md cursor-pointer"
+                        onClick={() => handleCheckout('pass', m.license_plate, m.id)}
+                        disabled={!isAgreed}
+                        className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg text-cyan-300 transition cursor-pointer disabled:opacity-40"
                       >
-                        🔑 Unlock with Stored Pass ({availablePasses} available)
+                        Unlock ($1.99)
+                      </button>
+                      <button
+                        onClick={() => handleCheckout('subscription', m.license_plate, m.id)}
+                        disabled={!isAgreed}
+                        className="flex-1 py-2 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg text-slate-950 transition cursor-pointer disabled:opacity-40"
+                      >
+                        Subscribe ($2.99/mo)
                       </button>
                     </div>
-                  )}
-
-                  <div className="flex justify-center gap-2 pt-1">
-                    <button
-                      onClick={() => handleCheckout('pass')}
-                      disabled={!agreedToCheckoutTerms}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg text-cyan-300 transition cursor-pointer disabled:opacity-40"
-                    >
-                      Unlock ($1.99)
-                    </button>
-                    <button
-                      onClick={() => handleCheckout('subscription')}
-                      disabled={!agreedToCheckoutTerms}
-                      className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-xs font-bold rounded-lg text-slate-950 transition cursor-pointer disabled:opacity-40"
-                    >
-                      Subscribe ($2.99/mo)
-                    </button>
                   </div>
-                </div>
-              )}
-            </div>
-          ))
+                )}
+              </div>
+            )
+          })
         )}
       </div>
 
