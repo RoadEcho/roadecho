@@ -322,13 +322,14 @@ export default function VaultDashboard() {
         return
       }
 
-      const res = await fetch('/api/checkout', {
+      // Pointing to your dedicated billing portal API route
+      const res = await fetch('/api/billing/portal', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ type: 'portal', userId }),
+        body: JSON.stringify({ userId }),
       })
 
       const data = await res.json()
