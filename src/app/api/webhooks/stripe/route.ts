@@ -77,17 +77,22 @@ export async function POST(request: Request) {
         })
     }
 
-    // Handle Message Unlocks / Analytics Tracking (Added crypto.randomUUID() for required id column)
+    // Handle Unlocks / Analytics Tracking (Logs both message unlocks and subscriptions for admin dashboard)
     const messageId = session.metadata?.messageId
     const amountTotal = session.amount_total ? session.amount_total / 100 : 0
-    if (clientReferenceId && messageId && messageId.trim() !== '') {
-      await supabase.from('unlocks').insert({
-        id: crypto.randomUUID(),
-        user_id: clientReferenceId,
-        message_id: messageId,
-        amount: amountTotal,
-        created_at: new Date().toISOString(),
-      })
+    if (clientReferenceId) {
+      const isMessageUnlock = messageId && messageId.trim() !== ''
+      const isSubscriptionCheckout = subscriptionId || purchaseType === 'subscription' || session.mode === 'subscription'
+
+      if (isMessageUnlock || isSubscriptionCheckout) {
+        await supabase.from('unlocks').insert({
+          id: crypto.randomUUID(),
+          user_id: clientReferenceId,
+          message_id: isMessageUnlock ? messageId : 'subscription',
+          amount: amountTotal,
+          created_at: new Date().toISOString(),
+        })
+      }
     }
 
     // Track/Update Subscription for Admin Total Subscribers Metric & Profiles Table
