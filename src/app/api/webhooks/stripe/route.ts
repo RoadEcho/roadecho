@@ -77,7 +77,7 @@ export async function POST(request: Request) {
         })
     }
 
-    // Handle Unlocks / Analytics Tracking (Logs both message unlocks and subscriptions for admin dashboard)
+    // Handle Unlocks / Analytics Tracking
     const messageId = session.metadata?.messageId
     const amountTotal = session.amount_total ? session.amount_total / 100 : 0
     if (clientReferenceId) {
@@ -99,7 +99,6 @@ export async function POST(request: Request) {
     if (subscriptionId) {
       const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as any
       
-      // Fallback user ID resolution from subscription metadata if clientReferenceId is still missing
       if (!clientReferenceId && (subscription.metadata?.userId || subscription.metadata?.user_id)) {
         clientReferenceId = subscription.metadata.userId || subscription.metadata.user_id
       }
@@ -111,34 +110,32 @@ export async function POST(request: Request) {
       }
 
       if (clientReferenceId) {
-        // Check if subscription record already exists to safely insert or update
         const { data: existingSub } = await supabase
           .from('subscriptions')
           .select('id')
           .eq('stripe_subscription_id', subscription.id)
           .maybeSingle()
 
+        const subscriptionPayload = {
+          status: statusToSave,
+          price_id: subscription.items.data[0].price.id,
+          cancel_at_period_end: cancelAtPeriodEnd,
+          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+
         if (existingSub) {
-          await supabase.from('subscriptions').update({
-            status: statusToSave,
-            price_id: subscription.items.data[0].price.id,
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            updated_at: new Date().toISOString(),
-          }).eq('stripe_subscription_id', subscription.id)
+          await supabase.from('subscriptions').update(subscriptionPayload).eq('stripe_subscription_id', subscription.id)
         } else {
           await supabase.from('subscriptions').insert({
             id: crypto.randomUUID(),
             stripe_subscription_id: subscription.id,
             user_id: clientReferenceId,
-            status: statusToSave,
-            price_id: subscription.items.data[0].price.id,
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            ...subscriptionPayload,
           })
         }
 
-        // CRITICAL: Synchronize profile data so dashboard Pro status and cancellation banner render correctly
         await supabase
           .from('profiles')
           .update({
@@ -215,7 +212,13 @@ export async function POST(request: Request) {
 
     let userId = subscription.metadata?.userId || subscription.metadata?.user_id
 
-    // Check if subscription record exists
+    const subscriptionPayload = {
+      status: statusToSave,
+      cancel_at_period_end: cancelAtPeriodEnd,
+      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
     const { data: existingSub } = await supabase
       .from('subscriptions')
       .select('id, user_id')
@@ -224,13 +227,8 @@ export async function POST(request: Request) {
 
     if (existingSub) {
       userId = userId || existingSub.user_id
-      await supabase.from('subscriptions').update({
-        status: statusToSave,
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-        updated_at: new Date().toISOString(),
-      }).eq('stripe_subscription_id', subscription.id)
+      await supabase.from('subscriptions').update(subscriptionPayload).eq('stripe_subscription_id', subscription.id)
     } else {
-      // Fallback lookup profile by stripe_customer_id
       const { data: profileMatch } = await supabase
         .from('profiles')
         .select('id')
@@ -243,15 +241,12 @@ export async function POST(request: Request) {
           id: crypto.randomUUID(),
           stripe_subscription_id: subscription.id,
           user_id: userId,
-          status: statusToSave,
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          ...subscriptionPayload,
         })
       }
     }
 
-    // Update profile subscription status & tier reliably by user ID or customer ID
     if (userId) {
       await supabase
         .from('profiles')
@@ -279,10 +274,11 @@ export async function POST(request: Request) {
 
     await supabase.from('subscriptions').update({
       status: 'canceled',
+      cancel_at_period_end: true,
       updated_at: new Date().toISOString(),
     }).eq('stripe_subscription_id', subscription.id)
 
-    // Update profile status to inactive/free
+    // Update profile status to inactive/free when fully expired
     await supabase
       .from('profiles')
       .update({
