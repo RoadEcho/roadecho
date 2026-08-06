@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import crypto from 'crypto'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia' as any,
@@ -76,11 +77,12 @@ export async function POST(request: Request) {
         })
     }
 
-    // Handle Message Unlocks / Analytics Tracking
+    // Handle Message Unlocks / Analytics Tracking (Added crypto.randomUUID() for required id column)
     const messageId = session.metadata?.messageId
     const amountTotal = session.amount_total ? session.amount_total / 100 : 0
     if (clientReferenceId && messageId && messageId.trim() !== '') {
       await supabase.from('unlocks').insert({
+        id: crypto.randomUUID(),
         user_id: clientReferenceId,
         message_id: messageId,
         amount: amountTotal,
@@ -98,19 +100,34 @@ export async function POST(request: Request) {
         statusToSave = cancelAtPeriodEnd ? 'canceling' : 'active'
       }
 
-      // Upsert into subscriptions table
-      await supabase.from('subscriptions').upsert({
-        stripe_subscription_id: subscription.id,
-        user_id: clientReferenceId || customerId,
-        status: statusToSave,
-        price_id: subscription.items.data[0].price.id,
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'stripe_subscription_id'
-      })
+      // Check if subscription record already exists to safely insert or update
+      const { data: existingSub } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('stripe_subscription_id', subscription.id)
+        .maybeSingle()
 
-      // Sync profile with stripe_customer_id and status (set tier to 'pro' so vault dashboard UI renders cancel/management options)
+      if (existingSub) {
+        await supabase.from('subscriptions').update({
+          status: statusToSave,
+          price_id: subscription.items.data[0].price.id,
+          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq('stripe_subscription_id', subscription.id)
+      } else {
+        await supabase.from('subscriptions').insert({
+          id: crypto.randomUUID(),
+          stripe_subscription_id: subscription.id,
+          user_id: clientReferenceId,
+          status: statusToSave,
+          price_id: subscription.items.data[0].price.id,
+          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+      }
+
+      // Sync profile with stripe_customer_id and status (sets tier to 'pro' so vault dashboard UI renders Pro banner & management options)
       if (customerId && clientReferenceId) {
         await supabase
           .from('profiles')
@@ -186,15 +203,39 @@ export async function POST(request: Request) {
       statusToSave = cancelAtPeriodEnd ? 'canceling' : 'active'
     }
 
-    // Update subscriptions table
-    await supabase.from('subscriptions').upsert({
-      stripe_subscription_id: subscription.id,
-      status: statusToSave,
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      updated_at: new Date().toISOString(),
-    }, {
-      onConflict: 'stripe_subscription_id'
-    })
+    // Check if subscription record exists
+    const { data: existingSub } = await supabase
+      .from('subscriptions')
+      .select('id, user_id')
+      .eq('stripe_subscription_id', subscription.id)
+      .maybeSingle()
+
+    if (existingSub) {
+      await supabase.from('subscriptions').update({
+        status: statusToSave,
+        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq('stripe_subscription_id', subscription.id)
+    } else {
+      // Fallback lookup profile by stripe_customer_id
+      const { data: profileMatch } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('stripe_customer_id', subscription.customer as string)
+        .maybeSingle()
+
+      if (profileMatch) {
+        await supabase.from('subscriptions').insert({
+          id: crypto.randomUUID(),
+          stripe_subscription_id: subscription.id,
+          user_id: profileMatch.id,
+          status: statusToSave,
+          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+      }
+    }
 
     // Update profile subscription status & tier
     await supabase
