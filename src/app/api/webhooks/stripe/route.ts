@@ -62,10 +62,11 @@ export async function POST(request: Request) {
         })
     }
 
-    // Track/Update Subscription for Admin Total Subscribers Metric
+    // Track/Update Subscription for Admin Total Subscribers Metric & Profiles Table (Crucial for Customer Portal)
     if (subscriptionId && clientReferenceId) {
       const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as any
       
+      // Upsert into subscriptions table
       await supabase.from('subscriptions').upsert({
         stripe_subscription_id: subscription.id,
         user_id: clientReferenceId || customerId,
@@ -76,6 +77,19 @@ export async function POST(request: Request) {
       }, {
         onConflict: 'stripe_subscription_id'
       })
+
+      // Sync profile with stripe_customer_id and active status so dashboard & portal work
+      if (customerId) {
+        await supabase
+          .from('profiles')
+          .update({
+            stripe_customer_id: customerId,
+            subscription_status: subscription.status,
+            subscription_tier: 'subscriber',
+            subscription_started_at: new Date().toISOString(),
+          })
+          .eq('id', clientReferenceId)
+      }
     }
 
     // Handle Referral Bonus Logic
@@ -130,7 +144,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // 2. Handle Subscription Updates (Renewals/Changes)
+  // 2. Handle Subscription Updates (Renewals/Changes/Cancellations period end)
   if (event.type === 'customer.subscription.updated') {
     const subscription = event.data.object as any
 
@@ -142,6 +156,14 @@ export async function POST(request: Request) {
     }, {
       onConflict: 'stripe_subscription_id'
     })
+
+    // Update profile subscription status
+    await supabase
+      .from('profiles')
+      .update({
+        subscription_status: subscription.status,
+      })
+      .eq('stripe_customer_id', subscription.customer as string)
   }
 
   // 3. Handle Subscription Cancellations & Expirations
@@ -152,6 +174,15 @@ export async function POST(request: Request) {
       status: 'canceled',
       updated_at: new Date().toISOString(),
     }).eq('stripe_subscription_id', subscription.id)
+
+    // Update profile status to inactive/free
+    await supabase
+      .from('profiles')
+      .update({
+        subscription_status: 'canceled',
+        subscription_tier: 'free',
+      })
+      .eq('stripe_customer_id', subscription.customer as string)
 
     // Send Subscription Expired Email
     try {
