@@ -100,6 +100,12 @@ export default function FAQPage() {
                 </ul>
               </div>
               <div>
+                <strong className="text-slate-200 block">Can I cancel my subscription at any time?</strong>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Yes. You can manage or cancel your subscription at any time directly from your dashboard by clicking the &quot;Manage / Cancel Subscription&quot; button. When you cancel, your active subscriber benefits and vault access remain fully active through the end of your current pre-paid billing period.
+                </p>
+              </div>
+              <div>
                 <strong className="text-slate-200 block">How do I delete my account and data (GDPR Compliance)?</strong>
                 <p className="text-xs text-slate-400 mt-0.5">
                   In compliance with international GDPR and UK GDPR regulations, you maintain absolute Data Subject Rights. You can execute instant self-service account deletion and permanent data record purging directly through your user dashboard.
