@@ -46,6 +46,9 @@ export default function VaultDashboard() {
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('inactive')
   const [subscriptionTier, setSubscriptionTier] = useState<string>('free')
   const [subscriptionStartedAt, setSubscriptionStartedAt] = useState<string | null>(null)
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState<boolean>(false)
+  const [currentPeriodEnd, setCurrentPeriodEnd] = useState<string | null>(null)
+
   const [messageAgreements, setMessageAgreements] = useState<{ [messageId: string]: boolean }>({})
   const [isPortalLoading, setIsPortalLoading] = useState(false)
   
@@ -157,6 +160,22 @@ export default function VaultDashboard() {
         }
       } catch (e) {
         console.error('Profile fetch warning:', e)
+      }
+
+      // Fetch subscription cancellation metrics (Step 2)
+      try {
+        const { data: subData } = await supabase
+          .from('subscriptions')
+          .select('cancel_at_period_end, current_period_end')
+          .eq('user_id', currentUserId)
+          .maybeSingle()
+
+        if (subData) {
+          setCancelAtPeriodEnd(subData.cancel_at_period_end || false)
+          setCurrentPeriodEnd(subData.current_period_end || null)
+        }
+      } catch (e) {
+        console.error('Subscription cancellation fetch warning:', e)
       }
 
       try {
@@ -322,7 +341,6 @@ export default function VaultDashboard() {
         return
       }
 
-      // Pointing to your dedicated billing portal API route
       const res = await fetch('/api/billing/portal', {
         method: 'POST',
         headers: {
@@ -466,7 +484,7 @@ export default function VaultDashboard() {
   }
 
   const isPassActive = passExpiresAt && new Date(passExpiresAt) > new Date()
-  const isSubscriberActive = subscriptionStatus === 'active' || subscriptionStatus === 'canceling' || subscriptionTier === 'pro'
+  const isSubscriberActive = subscriptionStatus === 'active' || subscriptionStatus === 'canceling' || subscriptionTier === 'pro' || cancelAtPeriodEnd
 
   if (loading) {
     return (
@@ -517,8 +535,35 @@ export default function VaultDashboard() {
         </div>
       )}
 
-      {/* Active Subscriber Status Banner & Management */}
-      {isSubscriberActive && (
+      {/* Subscription Banners (Step 3: Scheduled Cancellation vs Active Pro) */}
+      {cancelAtPeriodEnd && currentPeriodEnd ? (
+        <div className="mb-8 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 text-amber-300">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 text-xs font-bold rounded">CANCELLATION SCHEDULED</span>
+              <span className="text-xs text-amber-200 font-medium">Pro Access Active Until End Date</span>
+            </div>
+            <p className="text-xs text-slate-300 mt-1">
+              Your subscription is set to cancel on{' '}
+              <span className="font-semibold text-white">
+                {new Date(currentPeriodEnd).toLocaleDateString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </span>
+              . No further charges will occur.
+            </p>
+          </div>
+          <button
+            onClick={handleManageSubscription}
+            disabled={isPortalLoading}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition cursor-pointer whitespace-nowrap shadow-lg"
+          >
+            {isPortalLoading ? 'Loading Portal...' : 'Manage Subscription'}
+          </button>
+        </div>
+      ) : isSubscriberActive ? (
         <div className="mb-8 p-4 bg-cyan-950/40 border border-cyan-500/40 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -526,9 +571,7 @@ export default function VaultDashboard() {
               <span className="text-xs text-cyan-300 font-medium">Active Vault & Real-Time Alerts</span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              {subscriptionStatus === 'canceling' 
-                ? 'Your subscription is set to cancel at the end of the current billing period.' 
-                : `Active subscriber since ${subscriptionStartedAt ? new Date(subscriptionStartedAt).toLocaleDateString() : 'recently'}.`}
+              Active subscriber since {subscriptionStartedAt ? new Date(subscriptionStartedAt).toLocaleDateString() : 'recently'}.
             </p>
           </div>
           <button
@@ -539,7 +582,7 @@ export default function VaultDashboard() {
             {isPortalLoading ? 'Loading Portal...' : 'Manage / Cancel Subscription'}
           </button>
         </div>
-      )}
+      ) : null}
 
       <div className="mb-8 p-5 bg-slate-950 border border-cyan-500/30 rounded-xl space-y-4">
         <div>
@@ -773,7 +816,6 @@ export default function VaultDashboard() {
                       </div>
                     )}
 
-                    {/* Per-message terms checkbox */}
                     <div className="flex items-start space-x-2 text-xs text-slate-400 pt-2 border-t border-slate-800 text-left">
                       <input
                         type="checkbox"
@@ -830,7 +872,6 @@ export default function VaultDashboard() {
         )}
       </div>
 
-      {/* GDPR Data Deletion Section */}
       <div className="mb-8 p-5 bg-red-950/20 border border-red-900/40 rounded-xl space-y-3">
         <div>
           <h3 className="font-bold text-red-400 text-sm">🔒 Data Privacy & Deletion (GDPR)</h3>
