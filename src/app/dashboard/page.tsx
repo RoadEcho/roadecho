@@ -50,6 +50,7 @@ export default function VaultDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [copiedRef, setCopiedRef] = useState(false)
   const [copiedShare, setCopiedShare] = useState(false)
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -186,6 +187,41 @@ export default function VaultDashboard() {
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
+  }
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to delete your account? This action is permanent and will instantly purge all your claimed plates, pass vault data, and messages in compliance with GDPR.'
+    )
+
+    if (!confirmed) return
+
+    setIsDeletingAccount(true)
+    setError(null)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const res = await fetch('/api/user/delete', {
+        method: 'DELETE',
+        headers: {
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+        }
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete account.')
+      }
+
+      await supabase.auth.signOut()
+      router.push('/login?deleted=true')
+      router.refresh()
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while deleting your account.')
+      setIsDeletingAccount(false)
+    }
   }
 
   const handleActivatePass = async () => {
@@ -686,6 +722,21 @@ export default function VaultDashboard() {
             </div>
           ))
         )}
+      </div>
+
+      {/* GDPR Data Deletion Section */}
+      <div className="mb-8 p-5 bg-red-950/20 border border-red-900/40 rounded-xl space-y-3">
+        <div>
+          <h3 className="font-bold text-red-400 text-sm">🔒 Data Privacy &amp; Deletion (GDPR)</h3>
+          <p className="text-xs text-slate-400">Permanently erase your account, remove all claimed plates, and clear your message vault history.</p>
+        </div>
+        <button
+          onClick={handleDeleteAccount}
+          disabled={isDeletingAccount}
+          className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-lg transition disabled:opacity-50 cursor-pointer"
+        >
+          {isDeletingAccount ? 'Purging Account Data...' : 'Delete My Account &amp; All Data'}
+        </button>
       </div>
 
       <div className="border-t border-slate-800 pt-4 flex flex-wrap justify-center gap-4 text-xs text-slate-400">
