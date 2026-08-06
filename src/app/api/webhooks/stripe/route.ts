@@ -88,7 +88,7 @@ export async function POST(request: Request) {
         await supabase.from('unlocks').insert({
           id: crypto.randomUUID(),
           user_id: clientReferenceId,
-          message_id: isMessageUnlock ? messageId : 'subscription',
+          message_id: isMessageUnlock ? messageId : null, // Fixed: null satisfies the UUID column requirement
           amount: amountTotal,
           created_at: new Date().toISOString(),
         })
