@@ -13,14 +13,15 @@ export async function POST(request: Request) {
   try {
     const { type, userId, plateHash, messageId } = await request.json();
 
+    // Fetch user profile to check for an existing stripe_customer_id
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('stripe_customer_id, email')
+      .eq('id', userId)
+      .single();
+
     // Handle Stripe Customer Portal for managing/canceling active subscriptions
     if (type === 'portal') {
-      const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('stripe_customer_id')
-        .eq('id', userId)
-        .single();
-
       if (!profile?.stripe_customer_id) {
         return NextResponse.json({ error: 'No active billing profile found.' }, { status: 400 });
       }
@@ -40,7 +41,8 @@ export async function POST(request: Request) {
 
     const mode = type === 'subscription' ? 'subscription' : 'payment';
 
-    const session = await stripe.checkout.sessions.create({
+    // Build checkout session options, reusing customer ID if it exists
+    const sessionOptions: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ['card'],
       line_items: [
         {
@@ -58,7 +60,15 @@ export async function POST(request: Request) {
         plateHash: plateHash || '',
         messageId: messageId || '',
       },
-    });
+    };
+
+    if (profile?.stripe_customer_id) {
+      sessionOptions.customer = profile.stripe_customer_id;
+    } else if (profile?.email) {
+      sessionOptions.customer_email = profile.email;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionOptions);
 
     return NextResponse.json({ url: session.url });
   } catch (err: any) {
