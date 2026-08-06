@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://roadecho.vercel.app'
   const logoUrl = `${siteUrl}/logo.PNG`
 
-  // 1. Handle Checkout Session Completed (Passes, Subscriptions & Referrals)
+  // 1. Handle Checkout Session Completed (Passes, Subscriptions, Unlocks & Referrals)
   if (event.type === 'checkout.session.completed') {
     const referrerId = session.metadata?.referrerId
     const subscriptionId = session.subscription as string
@@ -60,6 +60,18 @@ export async function POST(request: Request) {
         }, {
           onConflict: 'user_id'
         })
+    }
+
+    // Handle Message Unlocks / Analytics Tracking
+    const messageId = session.metadata?.messageId
+    const amountTotal = session.amount_total ? session.amount_total / 100 : 0
+    if (clientReferenceId && messageId && messageId.trim() !== '') {
+      await supabase.from('unlocks').insert({
+        user_id: clientReferenceId,
+        message_id: messageId,
+        amount: amountTotal,
+        created_at: new Date().toISOString(),
+      })
     }
 
     // Track/Update Subscription for Admin Total Subscribers Metric & Profiles Table
