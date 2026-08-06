@@ -42,7 +42,7 @@ export default function SupportChat() {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-6 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md my-8 text-slate-200">
+    <div className="w-full max-w-2xl mx-auto p-4 sm:p-6 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-md my-8 text-slate-200">
       <h2 className="text-lg font-bold text-cyan-400 mb-4">RoadEcho AI Support Assistant</h2>
 
       <div className="h-80 overflow-y-auto space-y-4 mb-4 p-4 bg-slate-950/50 rounded-xl border border-slate-800 text-sm">
@@ -68,18 +68,18 @@ export default function SupportChat() {
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="flex gap-2 items-center">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question about RoadEcho terms, privacy, or vault..."
-          className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+          placeholder="Ask a question..."
+          className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500"
         />
         <button
           type="submit"
           disabled={loading}
-          className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-5 py-2 rounded-xl text-sm transition-colors disabled:opacity-50"
+          className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-4 sm:px-5 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-50 shrink-0"
         >
           Send
         </button>
