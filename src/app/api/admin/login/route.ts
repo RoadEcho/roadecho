@@ -56,13 +56,15 @@ export async function POST(request: Request) {
       )
     }
 
-    // 3. Record login into user_logins safely
-    await supabaseAdmin.from('user_logins').insert({
-      user_id: authData.user.id,
-      email: authData.user.email,
-    }).catch((err) => {
+    // 3. Record login into user_logins safely using async/await and try/catch
+    try {
+      await supabaseAdmin.from('user_logins').insert({
+        user_id: authData.user.id,
+        email: authData.user.email,
+      })
+    } catch (err) {
       console.error('Failed to log admin login activity:', err)
-    })
+    }
 
     return NextResponse.json({ success: true, session: authData.session })
   } catch (err: any) {
