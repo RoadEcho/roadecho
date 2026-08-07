@@ -127,11 +127,11 @@ export default function AdminDashboard() {
 
       setAdminEmail(session.user.email)
 
-      // Query by user ID to satisfy the secure RLS policy (auth.uid() = id)
+      // FIX: Query admin_users by email instead of non-matching auth user ID
       const { data: adminRecord, error: adminErr } = await supabase
         .from('admin_users')
         .select('email')
-        .eq('id', session.user.id)
+        .eq('email', session.user.email)
         .single()
 
       if (adminErr || !adminRecord) {
@@ -232,7 +232,6 @@ export default function AdminDashboard() {
         const items = unlockData.unlocks || []
         setUnlocksList(items)
 
-        // Compute unlocks breakdowns directly on frontend to match all records accurately
         const dailyUnlocks: Record<string, number> = {}
         const weeklyUnlocks: Record<string, number> = {}
         const monthlyUnlocks: Record<string, number> = {}
@@ -355,7 +354,6 @@ export default function AdminDashboard() {
       return
     }
 
-    // Optimistically remove user instantly on the first click
     setUserStats(prev => prev ? {
       ...prev,
       totalUsers: Math.max(0, prev.totalUsers - 1),
@@ -375,7 +373,7 @@ export default function AdminDashboard() {
       checkAdminAndFetch()
     } catch (err: any) {
       setError(err.message || 'Failed to delete user')
-      checkAdminAndFetch() // Re-fetch on error to restore state if deletion failed
+      checkAdminAndFetch()
     }
   }
 
