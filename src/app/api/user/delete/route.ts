@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 export async function DELETE(request: Request) {
   try {
     const cookieStore = cookies();
     
-    // Initialize Supabase server client with cookie persistence
+    // Initialize Supabase server client with cookie persistence for session check
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -37,10 +38,17 @@ export async function DELETE(request: Request) {
 
     const userId = user.id;
 
-    // Purge user-associated records across target tables for GDPR compliance
+    // Initialize Supabase Admin client (Service Role) to bypass RLS and delete auth user
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+
+    // Purge user-associated records across target tables using admin client
     
     // 1. Purge user plates
-    const { error: platesError } = await supabase
+    const { error: platesError } = await supabaseAdmin
       .from('user_plates')
       .delete()
       .eq('user_id', userId);
@@ -50,7 +58,7 @@ export async function DELETE(request: Request) {
     }
 
     // 2. Purge pass vault items
-    const { error: passVaultError } = await supabase
+    const { error: passVaultError } = await supabaseAdmin
       .from('pass_vault')
       .delete()
       .eq('user_id', userId);
@@ -60,7 +68,7 @@ export async function DELETE(request: Request) {
     }
 
     // 3. Purge associated messages
-    const { error: messagesError } = await supabase
+    const { error: messagesError } = await supabaseAdmin
       .from('messages')
       .delete()
       .eq('sender_id', userId);
@@ -69,7 +77,17 @@ export async function DELETE(request: Request) {
       console.error('Error purging messages:', messagesError);
     }
 
-    // Invalidate active session/cookies
+    // 4. Permanently delete the user account from Supabase Auth (auth.users)
+    const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (deleteUserError) {
+      console.error('Error deleting user from auth.users:', deleteUserError);
+      return NextResponse.json(
+        { error: 'Failed to purge account from authentication system.' },
+        { status: 500 }
+      );
+    }
+
+    // Invalidate active session/cookies client-side
     await supabase.auth.signOut();
 
     return NextResponse.json(
