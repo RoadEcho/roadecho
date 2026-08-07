@@ -28,7 +28,7 @@ export async function DELETE(request: Request) {
 
     let user = null;
 
-    // 1. Check for Authorization Bearer token first (prevents 401 unauthorized errors)
+    // 1. Check for Authorization Bearer token first
     const authHeader = request.headers.get('authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
@@ -62,90 +62,20 @@ export async function DELETE(request: Request) {
       { auth: { persistSession: false } }
     );
 
-    // Comprehensive purge of all user-associated records across target tables for worldwide legal compliance
-    
-    // 1. Purge claimed plates
-    const { error: claimedPlatesError } = await supabaseAdmin
-      .from('claimed_plates')
-      .delete()
-      .eq('user_id', userId);
+    // Optional manual cleanup of specific tables matching your actual schema
+    await supabaseAdmin.from('user_plates').delete().eq('user_id', userId);
+    await supabaseAdmin.from('plate_vault').delete().eq('user_id', userId);
+    await supabaseAdmin.from('user_pass_vault').delete().eq('user_id', userId);
+    await supabaseAdmin.from('user_passes').delete().eq('user_id', userId);
+    await supabaseAdmin.from('unlocks').delete().eq('user_id', userId);
+    await supabaseAdmin.from('subscriptions').delete().eq('user_id', userId);
+    await supabaseAdmin.from('user_credits').delete().eq('user_id', userId);
+    await supabaseAdmin.from('profiles').delete().eq('id', userId);
 
-    if (claimedPlatesError) {
-      console.error('Error purging claimed_plates:', claimedPlatesError);
-    }
-
-    // 2. Purge user plates
-    const { error: platesError } = await supabaseAdmin
-      .from('user_plates')
-      .delete()
-      .eq('user_id', userId);
-
-    if (platesError) {
-      console.error('Error purging user_plates:', platesError);
-    }
-
-    // 3. Purge user pass vault items
-    const { error: userPassVaultError } = await supabaseAdmin
-      .from('user_pass_vault')
-      .delete()
-      .eq('user_id', userId);
-
-    if (userPassVaultError) {
-      console.error('Error purging user_pass_vault:', userPassVaultError);
-    }
-
-    // 4. Purge pass vault items
-    const { error: passVaultError } = await supabaseAdmin
-      .from('pass_vault')
-      .delete()
-      .eq('user_id', userId);
-
-    if (passVaultError) {
-      console.error('Error purging pass_vault:', passVaultError);
-    }
-
-    // 5. Purge associated messages
-    const { error: messagesError } = await supabaseAdmin
-      .from('messages')
-      .delete()
-      .eq('sender_id', userId);
-
-    if (messagesError) {
-      console.error('Error purging messages:', messagesError);
-    }
-
-    // 6. Purge referrals
-    const { error: referralsError } = await supabaseAdmin
-      .from('referrals')
-      .delete()
-      .eq('referrer_id', userId);
-
-    if (referralsError) {
-      console.error('Error purging referrals:', referralsError);
-    }
-
-    // 7. Purge subscriptions
-    const { error: subscriptionsError } = await supabaseAdmin
-      .from('subscriptions')
-      .delete()
-      .eq('user_id', userId);
-
-    if (subscriptionsError) {
-      console.error('Error purging subscriptions:', subscriptionsError);
-    }
-
-    // 8. Purge profiles
-    const { error: profilesError } = await supabaseAdmin
-      .from('profiles')
-      .delete()
-      .eq('id', userId);
-
-    if (profilesError) {
-      console.error('Error purging profiles:', profilesError);
-    }
-
-    // 9. Permanently delete the user account from Supabase Auth (auth.users)
+    // Permanently delete the user account from Supabase Auth (auth.users)
+    // Cascades will handle any remaining linked rows automatically
     const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    
     if (deleteUserError) {
       console.error('Error deleting user from auth.users:', deleteUserError);
       return NextResponse.json(
