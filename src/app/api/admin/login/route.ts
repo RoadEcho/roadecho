@@ -79,11 +79,15 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24 * 7, // 1 week
     })
 
-    // Record login activity
-    await supabaseAdmin.from('user_logins').insert({
-      user_id: authData.user.id,
-      email: cleanEmail,
-    }).catch(() => {})
+    // Record login activity safely using standard try/catch
+    try {
+      await supabaseAdmin.from('user_logins').insert({
+        user_id: authData.user.id,
+        email: cleanEmail,
+      })
+    } catch {
+      // Non-blocking log failure
+    }
 
     return NextResponse.json({ success: true })
   } catch (err: any) {
