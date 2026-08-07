@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json()
+    const body = await request.json()
+    const { email, password } = body
 
     if (!email || !password) {
       return NextResponse.json(
@@ -16,20 +17,21 @@ export async function POST(request: Request) {
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !serviceRoleKey) {
+      console.error('Missing Supabase environment variables on server.')
       return NextResponse.json(
-        { error: 'Server configuration error: Missing Supabase environment variables.' },
+        { error: 'Server configuration error: Missing Supabase service role key.' },
         { status: 500 }
       )
     }
 
-    // Initialize Supabase Service Role client to securely bypass RLS on the server backend
+    // Initialize Supabase Service Role client to bypass RLS securely on the server backend
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     })
 
     const cleanEmail = email.trim().toLowerCase()
 
-    // 1. Verify if the email exists in the admin_users table first (strict security check)
+    // 1. Verify if the email exists in the admin_users table
     const { data: adminCheck, error: adminError } = await supabaseAdmin
       .from('admin_users')
       .select('*')
@@ -37,6 +39,7 @@ export async function POST(request: Request) {
       .single()
 
     if (adminError || !adminCheck) {
+      console.error('Admin check failed for email:', cleanEmail, adminError)
       return NextResponse.json(
         { error: 'Access denied. This account is not authorized as an administrator.' },
         { status: 403 }
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // 3. Record login into user_logins safely using async/await and try/catch
+    // 3. Record login into user_logins safely
     try {
       await supabaseAdmin.from('user_logins').insert({
         user_id: authData.user.id,
@@ -68,7 +71,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, session: authData.session })
   } catch (err: any) {
-    console.error('Admin login error:', err)
+    console.error('Admin login fatal error:', err)
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
   }
 }
