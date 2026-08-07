@@ -11,7 +11,6 @@ export default function AdminLoginPage() {
   const [resetSent, setResetSent] = useState(false)
   const [isSettingPassword, setIsSettingPassword] = useState(false)
 
-  // Detect if user landed here via an invite or recovery link with tokens in the URL hash
   useEffect(() => {
     const checkHashAndSession = async () => {
       const hash = window.location.hash
@@ -21,19 +20,6 @@ export default function AdminLoginPage() {
     }
 
     checkHashAndSession()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
-      if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') {
-        const hash = window.location.hash
-        if (hash.includes('type=invite') || hash.includes('type=recovery')) {
-          setIsSettingPassword(true)
-        }
-      }
-    })
-
-    return () => {
-      subscription.unsubscribe()
-    }
   }, [])
 
   const handleAdminLogin = async (e: React.FormEvent) => {
@@ -43,30 +29,24 @@ export default function AdminLoginPage() {
     setResetSent(false)
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+      // Call the secure backend API route which uses the Service Role Key to bypass RLS
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
       })
 
-      if (authError) throw authError
+      const data = await response.json()
 
-      // Query by user ID to satisfy the secure RLS policy (auth.uid() = id)
-      const { data: adminRecord, error: adminCheckError } = await supabase
-        .from('admin_users')
-        .select('email')
-        .eq('id', data.user.id)
-        .single()
-
-      if (adminCheckError || !adminRecord) {
-        await supabase.auth.signOut()
-        throw new Error('Access denied. This account is not authorized as an administrator.')
+      if (!response.ok) {
+        throw new Error(data.error || 'Access denied. This account is not authorized as an administrator.')
       }
 
-      // Record admin login into user_logins so it increments Total Logins
-      if (data.user) {
-        await supabase.from('user_logins').insert({
-          user_id: data.user.id,
-          email: data.user.email,
+      // If login is successful, set the session client-side using the returned session data if needed, or redirect
+      if (data.session) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
         })
       }
 
@@ -85,23 +65,6 @@ export default function AdminLoginPage() {
     try {
       const { error: updateError } = await supabase.auth.updateUser({ password })
       if (updateError) throw updateError
-
-      // Record login upon setting password for invited admin
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        const { data: adminRecord } = await supabase
-          .from('admin_users')
-          .select('email')
-          .eq('id', session.user.id)
-          .single()
-
-        if (adminRecord) {
-          await supabase.from('user_logins').insert({
-            user_id: session.user.id,
-            email: session.user.email,
-          })
-        }
-      }
 
       window.location.href = '/admin'
     } catch (err: any) {
