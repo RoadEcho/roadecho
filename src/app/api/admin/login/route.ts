@@ -38,9 +38,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Set up SSR response and client to properly store cookies in Supabase SSR format
+    // 2. Set up SSR cookies so middleware recognizes the session instantly
     const cookieStore = cookies()
-    let response = NextResponse.json({ success: true })
+    const response = NextResponse.json({ success: true })
 
     const supabase = createServerClient(supabaseUrl, anonKey, {
       cookies: {
@@ -70,10 +70,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Record login activity
-    await supabaseAdmin.from('user_logins').insert({
-      user_id: authData.user.id,
-      email: cleanEmail,
-    }).catch(() => {})
+    try {
+      await supabaseAdmin.from('user_logins').insert({
+        user_id: authData.user.id,
+        email: cleanEmail,
+      })
+    } catch {
+      // Non-blocking
+    }
 
     return response
   } catch (err: any) {
