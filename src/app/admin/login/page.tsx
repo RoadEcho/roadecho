@@ -28,7 +28,6 @@ export default function AdminLoginPage() {
     setResetSent(false)
 
     try {
-      // Post to the backend API route so cookies are set properly on the server
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -41,7 +40,14 @@ export default function AdminLoginPage() {
         throw new Error(data.error || 'Failed to sign in.')
       }
 
-      // Successful login - hard redirect to admin dashboard where cookies will be recognized
+      // Sync session to browser client storage so client-side guards pass
+      if (data.session) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        })
+      }
+
       window.location.href = '/admin'
     } catch (err: any) {
       setError(err.message || 'Failed to sign in.')
