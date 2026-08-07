@@ -45,10 +45,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Set up SSR response and client to store cookies in native Supabase SSR format
+    // 2. Set up SSR cookies
     const cookieStore = cookies()
-    const response = NextResponse.json({ success: true })
-
     const supabase = createServerClient(supabaseUrl, anonKey, {
       cookies: {
         getAll() {
@@ -57,7 +55,6 @@ export async function POST(request: NextRequest) {
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options)
-            response.cookies.set(name, value, options)
           })
         },
       },
@@ -86,7 +83,14 @@ export async function POST(request: NextRequest) {
       // Non-blocking log failure
     }
 
-    return response
+    // Return success and session so client-side storage can sync
+    const res = NextResponse.json({ success: true, session: authData.session })
+    
+    cookieStore.getAll().forEach((cookie) => {
+      res.cookies.set(cookie.name, cookie.value)
+    })
+
+    return res
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || 'Internal server error' },
