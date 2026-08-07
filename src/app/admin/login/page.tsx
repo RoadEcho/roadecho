@@ -50,10 +50,11 @@ export default function AdminLoginPage() {
 
       if (authError) throw authError
 
+      // Query by user ID to satisfy the secure RLS policy (auth.uid() = id)
       const { data: adminRecord, error: adminCheckError } = await supabase
         .from('admin_users')
         .select('email')
-        .eq('email', email.trim().toLowerCase())
+        .eq('id', data.user.id)
         .single()
 
       if (adminCheckError || !adminRecord) {
@@ -91,7 +92,7 @@ export default function AdminLoginPage() {
         const { data: adminRecord } = await supabase
           .from('admin_users')
           .select('email')
-          .eq('email', session.user.email?.toLowerCase())
+          .eq('id', session.user.id)
           .single()
 
         if (adminRecord) {
