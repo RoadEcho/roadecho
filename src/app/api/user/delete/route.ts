@@ -7,7 +7,6 @@ export async function DELETE(request: Request) {
   try {
     const cookieStore = cookies();
     
-    // Initialize Supabase server client with cookie persistence for session check
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -27,8 +26,6 @@ export async function DELETE(request: Request) {
     );
 
     let user = null;
-
-    // 1. Check for Authorization Bearer token first
     const authHeader = request.headers.get('authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
@@ -38,7 +35,6 @@ export async function DELETE(request: Request) {
       }
     }
 
-    // 2. Fallback to cookie session check if no bearer token
     if (!user) {
       const { data: sessionData, error: sessionError } = await supabase.auth.getUser();
       if (!sessionError && sessionData?.user) {
@@ -47,22 +43,23 @@ export async function DELETE(request: Request) {
     }
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized. Active session required.' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized. Active session required.' }, { status: 401 });
     }
 
     const userId = user.id;
 
-    // Initialize Supabase Admin client (Service Role) to bypass RLS and delete auth user
+    // Check if Service Role Key is actually available in environment variables
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ error: 'CRITICAL: SUPABASE_SERVICE_ROLE_KEY is missing from environment variables.' }, { status: 500 });
+    }
+
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { persistSession: false } }
     );
 
-    // Optional manual cleanup of specific tables matching your actual schema
+    // Clean up public tables
     await supabaseAdmin.from('user_plates').delete().eq('user_id', userId);
     await supabaseAdmin.from('plate_vault').delete().eq('user_id', userId);
     await supabaseAdmin.from('user_pass_vault').delete().eq('user_id', userId);
@@ -72,33 +69,19 @@ export async function DELETE(request: Request) {
     await supabaseAdmin.from('user_credits').delete().eq('user_id', userId);
     await supabaseAdmin.from('profiles').delete().eq('id', userId);
 
-    // Permanently delete the user account from Supabase Auth (auth.users)
-    // Cascades will handle any remaining linked rows automatically
+    // Delete user and return the exact Supabase error message if it fails
     const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(userId);
     
     if (deleteUserError) {
       console.error('Error deleting user from auth.users:', deleteUserError);
-      return NextResponse.json(
-        { error: 'Failed to purge account from authentication system.' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: `Supabase Error: ${deleteUserError.message}` }, { status: 500 });
     }
 
-    // Invalidate active session/cookies client-side
     await supabase.auth.signOut();
 
-    return NextResponse.json(
-      { 
-        success: true, 
-        message: 'Account data and associated records have been successfully and permanently purged.' 
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, message: 'Account purged successfully.' }, { status: 200 });
   } catch (err: any) {
-    console.error('Unexpected error during DSR account deletion:', err);
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    );
+    console.error('Unexpected error during deletion:', err);
+    return NextResponse.json({ error: `Catch Error: ${err.message || err}` }, { status: 500 });
   }
 }
