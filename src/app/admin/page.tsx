@@ -127,19 +127,6 @@ export default function AdminDashboard() {
 
       setAdminEmail(session.user.email)
 
-      // FIX: Query admin_users by email instead of non-matching auth user ID
-      const { data: adminRecord, error: adminErr } = await supabase
-        .from('admin_users')
-        .select('email')
-        .eq('email', session.user.email)
-        .single()
-
-      if (adminErr || !adminRecord) {
-        await supabase.auth.signOut()
-        router.push('/admin/login')
-        return
-      }
-
       const res = await fetch('/api/analytics', {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       })
@@ -147,7 +134,7 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error(json.error || 'Failed to load analytics')
       setData(json)
 
-      // Fetch granular message logs directly from Supabase to ensure they load reliably
+      // Fetch granular message logs directly from Supabase
       const { data: msgRows } = await supabase
         .from('messages')
         .select('*')
