@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null) // Added success state
   const [isSignUp, setIsSignUp] = useState(false)
 
   useEffect(() => {
@@ -41,6 +42,7 @@ export default function LoginPage() {
     }
 
     setError(null)
+    setSuccessMessage(null)
     setLoading(true)
 
     try {
@@ -57,9 +59,15 @@ export default function LoginPage() {
           ])
         }
 
-        alert('Account created successfully! You are now signed in.')
-        router.push('/dashboard')
-        router.refresh()
+        // If email confirmation is enabled, session will be null. Tell user to check inbox.
+        if (data?.user && !data?.session) {
+          setSuccessMessage('Account created successfully! Please check your email inbox to confirm your address before signing in.')
+        } else {
+          // Fallback if confirmation is disabled in Supabase
+          alert('Account created successfully! You are now signed in.')
+          router.push('/dashboard')
+          router.refresh()
+        }
       } else {
         const { error: signInError, data } = await supabase.auth.signInWithPassword({
           email,
@@ -113,6 +121,13 @@ export default function LoginPage() {
         {error && (
           <div className="mb-4 p-3 bg-red-950/50 border border-red-800 rounded-lg text-red-300 text-xs font-mono break-all">
             {error}
+          </div>
+        )}
+
+        {/* Success message banner for email confirmation notice */}
+        {successMessage && (
+          <div className="mb-4 p-4 bg-emerald-950/60 border border-emerald-600 rounded-lg text-emerald-200 text-sm text-center leading-relaxed">
+            {successMessage}
           </div>
         )}
 
