@@ -59,18 +59,55 @@ export async function DELETE(request: Request) {
       { auth: { persistSession: false } }
     );
 
-    // Explicitly clean up related public table rows first to prevent foreign key constraint violations
-    await supabaseAdmin.from('claims').delete().eq('user_id', userId);
-    if (userEmail) {
-      await supabaseAdmin.from('messages').delete().eq('email', userEmail);
-      await supabaseAdmin.from('vault').delete().eq('email', userEmail);
-      await supabaseAdmin.from('vault_unlocks').delete().eq('email', userEmail);
-      await supabaseAdmin.from('admin_users').delete().eq('email', userEmail);
-    }
-    await supabaseAdmin.from('shares').delete().eq('user_id', userId);
-    await supabaseAdmin.from('user_logins').delete().eq('user_id', userId);
+    const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : null;
 
-    // Directly delete the user from auth.users safely on the first try.
+    // Comprehensive multi-table cleanup FIRST to prevent foreign key constraint violations
+    const tables = [
+      'user_plates',
+      'plate_vault',
+      'passes',
+      'subscriptions',
+      'unlocks',
+      'user_credits',
+      'user_logins',
+      'user_pass_vault',
+      'user_passes',
+      'user_milestone_claims',
+      'reward_events',
+      'shares',
+      'messages',
+      'user_access',
+      'admin_users',
+      'claims',
+      'vault',
+      'vault_unlocks'
+    ];
+
+    for (const table of tables) {
+      try {
+        await supabaseAdmin.from(table).delete().eq('user_id', userId);
+        await supabaseAdmin.from(table).delete().eq('id', userId);
+      } catch (e) {
+        // Suppress individual table errors
+      }
+
+      if (cleanEmail) {
+        try {
+          await supabaseAdmin.from(table).delete().eq('email', cleanEmail);
+          await supabaseAdmin.from(table).delete().ilike('email', cleanEmail);
+        } catch (e) {
+          // Suppress
+        }
+      }
+    }
+
+    if (cleanEmail) {
+      try {
+        await supabaseAdmin.from('messages').delete().ilike('sender_email', cleanEmail);
+      } catch (e) {}
+    }
+
+    // Directly delete the user from auth.users safely now that dependent rows are cleared
     const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(userId);
     
     if (deleteUserError) {
