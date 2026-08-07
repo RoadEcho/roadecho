@@ -83,20 +83,7 @@ export async function DELETE(
     const idTargets = [authUserId, rawId].filter(Boolean) as string[];
     const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : (rawId.includes('@') ? rawId.trim().toLowerCase() : null);
 
-    // 2. Delete from Supabase Auth permanently on the FIRST click
-    if (authUserId) {
-      const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
-      if (deleteAuthError) {
-        console.warn('Auth delete warning (user may already be deleted):', deleteAuthError.message);
-      } else {
-        // Stabilization delay to allow Supabase Auth cache to clear
-        await new Promise((resolve) => setTimeout(resolve, 800));
-      }
-    } else {
-      console.warn('Could not resolve Auth UUID for target:', rawId);
-    }
-
-    // 3. Comprehensive multi-table cleanup
+    // 2. Comprehensive multi-table cleanup FIRST to clear foreign key constraints
     const tables = [
       'user_plates',
       'plate_vault',
@@ -112,7 +99,10 @@ export async function DELETE(
       'shares',
       'messages',
       'user_access',
-      'admin_users'
+      'admin_users',
+      'claims',
+      'vault',
+      'vault_unlocks'
     ];
 
     for (const table of tables) {
@@ -139,6 +129,19 @@ export async function DELETE(
       try {
         await supabaseAdmin.from('messages').delete().ilike('sender_email', cleanEmail);
       } catch (e) {}
+    }
+
+    // 3. Delete from Supabase Auth permanently AFTER public rows are gone
+    if (authUserId) {
+      const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+      if (deleteAuthError) {
+        console.warn('Auth delete warning (user may already be deleted):', deleteAuthError.message);
+      } else {
+        // Stabilization delay to allow Supabase Auth cache to clear
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
+    } else {
+      console.warn('Could not resolve Auth UUID for target:', rawId);
     }
 
     return NextResponse.json({ success: true, message: 'User permanently purged from system' });
