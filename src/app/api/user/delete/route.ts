@@ -26,10 +26,27 @@ export async function DELETE(request: Request) {
       }
     );
 
-    // Retrieve and verify the authenticated user session
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    let user = null;
 
-    if (authError || !user) {
+    // 1. Check for Authorization Bearer token first (prevents 401 unauthorized errors)
+    const authHeader = request.headers.get('authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const { data: tokenData, error: tokenError } = await supabase.auth.getUser(token);
+      if (!tokenError && tokenData?.user) {
+        user = tokenData.user;
+      }
+    }
+
+    // 2. Fallback to cookie session check if no bearer token
+    if (!user) {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getUser();
+      if (!sessionError && sessionData?.user) {
+        user = sessionData.user;
+      }
+    }
+
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized. Active session required.' },
         { status: 401 }
@@ -45,9 +62,19 @@ export async function DELETE(request: Request) {
       { auth: { persistSession: false } }
     );
 
-    // Purge user-associated records across target tables using admin client
+    // Comprehensive purge of all user-associated records across target tables for worldwide legal compliance
     
-    // 1. Purge user plates
+    // 1. Purge claimed plates
+    const { error: claimedPlatesError } = await supabaseAdmin
+      .from('claimed_plates')
+      .delete()
+      .eq('user_id', userId);
+
+    if (claimedPlatesError) {
+      console.error('Error purging claimed_plates:', claimedPlatesError);
+    }
+
+    // 2. Purge user plates
     const { error: platesError } = await supabaseAdmin
       .from('user_plates')
       .delete()
@@ -57,7 +84,17 @@ export async function DELETE(request: Request) {
       console.error('Error purging user_plates:', platesError);
     }
 
-    // 2. Purge pass vault items
+    // 3. Purge user pass vault items
+    const { error: userPassVaultError } = await supabaseAdmin
+      .from('user_pass_vault')
+      .delete()
+      .eq('user_id', userId);
+
+    if (userPassVaultError) {
+      console.error('Error purging user_pass_vault:', userPassVaultError);
+    }
+
+    // 4. Purge pass vault items
     const { error: passVaultError } = await supabaseAdmin
       .from('pass_vault')
       .delete()
@@ -67,7 +104,7 @@ export async function DELETE(request: Request) {
       console.error('Error purging pass_vault:', passVaultError);
     }
 
-    // 3. Purge associated messages
+    // 5. Purge associated messages
     const { error: messagesError } = await supabaseAdmin
       .from('messages')
       .delete()
@@ -77,7 +114,37 @@ export async function DELETE(request: Request) {
       console.error('Error purging messages:', messagesError);
     }
 
-    // 4. Permanently delete the user account from Supabase Auth (auth.users)
+    // 6. Purge referrals
+    const { error: referralsError } = await supabaseAdmin
+      .from('referrals')
+      .delete()
+      .eq('referrer_id', userId);
+
+    if (referralsError) {
+      console.error('Error purging referrals:', referralsError);
+    }
+
+    // 7. Purge subscriptions
+    const { error: subscriptionsError } = await supabaseAdmin
+      .from('subscriptions')
+      .delete()
+      .eq('user_id', userId);
+
+    if (subscriptionsError) {
+      console.error('Error purging subscriptions:', subscriptionsError);
+    }
+
+    // 8. Purge profiles
+    const { error: profilesError } = await supabaseAdmin
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    if (profilesError) {
+      console.error('Error purging profiles:', profilesError);
+    }
+
+    // 9. Permanently delete the user account from Supabase Auth (auth.users)
     const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(userId);
     if (deleteUserError) {
       console.error('Error deleting user from auth.users:', deleteUserError);
