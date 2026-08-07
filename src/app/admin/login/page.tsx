@@ -12,14 +12,13 @@ export default function AdminLoginPage() {
   const [isSettingPassword, setIsSettingPassword] = useState(false)
 
   useEffect(() => {
-    const checkHashAndSession = async () => {
+    const checkHash = async () => {
       const hash = window.location.hash
       if (hash && (hash.includes('type=invite') || hash.includes('type=recovery') || hash.includes('access_token'))) {
         setIsSettingPassword(true)
       }
     }
-
-    checkHashAndSession()
+    checkHash()
   }, [])
 
   const handleAdminLogin = async (e: React.FormEvent) => {
@@ -29,27 +28,20 @@ export default function AdminLoginPage() {
     setResetSent(false)
 
     try {
-      // Call the secure backend API route which uses the Service Role Key to bypass RLS
-      const response = await fetch('/api/admin/login', {
+      // Post to the backend API route so cookies are set properly on the server
+      const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
       })
 
-      const data = await response.json()
+      const data = await res.json()
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Access denied. This account is not authorized as an administrator.')
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to sign in.')
       }
 
-      // If login is successful, set the session client-side using the returned session data if needed, or redirect
-      if (data.session) {
-        await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        })
-      }
-
+      // Successful login - hard redirect to admin dashboard where cookies will be recognized
       window.location.href = '/admin'
     } catch (err: any) {
       setError(err.message || 'Failed to sign in.')
