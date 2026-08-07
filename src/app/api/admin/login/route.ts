@@ -24,14 +24,13 @@ export async function POST(request: Request) {
       )
     }
 
-    // Initialize Supabase Service Role client
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     })
 
     const cleanEmail = email.trim().toLowerCase()
 
-    // 1. Verify if the email exists in the admin_users table
+    // 1. Verify admin user
     const { data: adminCheck, error: adminError } = await supabaseAdmin
       .from('admin_users')
       .select('*')
@@ -45,7 +44,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // 2. Authenticate credentials via Supabase Auth
+    // 2. Authenticate credentials
     const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
       email: cleanEmail,
       password,
@@ -58,7 +57,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // 3. Set Supabase auth cookies so middleware and server components recognize the session
+    // 3. Set server-side auth cookie
     const cookieStore = cookies()
     const supabaseProjectId = new URL(supabaseUrl).hostname.split('.')[0]
     const cookieName = `sb-${supabaseProjectId}-auth-token`
@@ -76,20 +75,21 @@ export async function POST(request: Request) {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
+      maxAge: 60 * 60 * 24 * 7,
     })
 
-    // Record login activity safely using standard try/catch
+    // Record login activity
     try {
       await supabaseAdmin.from('user_logins').insert({
         user_id: authData.user.id,
         email: cleanEmail,
       })
     } catch {
-      // Non-blocking log failure
+      // Non-blocking
     }
 
-    return NextResponse.json({ success: true })
+    // Return success AND the session object so the client can sync it
+    return NextResponse.json({ success: true, session: authData.session })
   } catch (err: any) {
     return NextResponse.json({ error: `Fatal Error: ${err.message}` }, { status: 500 })
   }
