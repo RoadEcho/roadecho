@@ -20,7 +20,14 @@ export async function POST(request: NextRequest) {
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-    // 1. Verify admin user using service role (bypasses RLS securely)
+    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+      return NextResponse.json(
+        { error: 'Server configuration error: Missing Supabase environment variables.' },
+        { status: 500 }
+      )
+    }
+
+    // 1. Verify admin user existence in admin_users using service role (bypasses RLS securely)
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     })
@@ -38,7 +45,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Set up SSR cookies so middleware recognizes the session instantly
+    // 2. Set up SSR response and client to store cookies in native Supabase SSR format
     const cookieStore = cookies()
     const response = NextResponse.json({ success: true })
 
@@ -56,7 +63,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // 3. Sign in via Supabase Auth (automatically sets native SSR auth cookies)
+    // 3. Authenticate credentials via Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password,
@@ -69,18 +76,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 4. Record login activity
+    // 4. Record login activity in user_logins
     try {
       await supabaseAdmin.from('user_logins').insert({
         user_id: authData.user.id,
         email: cleanEmail,
       })
     } catch {
-      // Non-blocking
+      // Non-blocking log failure
     }
 
     return response
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      { error: err.message || 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
