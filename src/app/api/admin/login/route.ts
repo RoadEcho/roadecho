@@ -1,8 +1,9 @@
+import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { email, password } = body
@@ -14,23 +15,16 @@ export async function POST(request: Request) {
       )
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const cleanEmail = email.trim().toLowerCase()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { error: 'Server config error: Missing Supabase URL or Service Role Key.' },
-        { status: 500 }
-      )
-    }
-
+    // 1. Verify admin user using service role (bypasses RLS securely)
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     })
 
-    const cleanEmail = email.trim().toLowerCase()
-
-    // 1. Verify admin user
     const { data: adminCheck, error: adminError } = await supabaseAdmin
       .from('admin_users')
       .select('*')
@@ -44,53 +38,45 @@ export async function POST(request: Request) {
       )
     }
 
-    // 2. Authenticate credentials
-    const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
+    // 2. Set up SSR response and client to properly store cookies in Supabase SSR format
+    const cookieStore = cookies()
+    let response = NextResponse.json({ success: true })
+
+    const supabase = createServerClient(supabaseUrl, anonKey, {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options)
+            response.cookies.set(name, value, options)
+          })
+        },
+      },
+    })
+
+    // 3. Sign in via Supabase Auth (automatically sets native SSR auth cookies)
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password,
     })
 
     if (authError || !authData.session) {
       return NextResponse.json(
-        { error: `Auth Error: ${authError?.message || 'Invalid login credentials'}` },
+        { error: authError?.message || 'Invalid login credentials.' },
         { status: 401 }
       )
     }
 
-    // 3. Set server-side auth cookie
-    const cookieStore = cookies()
-    const supabaseProjectId = new URL(supabaseUrl).hostname.split('.')[0]
-    const cookieName = `sb-${supabaseProjectId}-auth-token`
+    // 4. Record login activity
+    await supabaseAdmin.from('user_logins').insert({
+      user_id: authData.user.id,
+      email: cleanEmail,
+    }).catch(() => {})
 
-    const sessionValue = JSON.stringify([
-      authData.session.access_token,
-      authData.session.refresh_token,
-      null,
-      null,
-      null
-    ])
-
-    cookieStore.set(cookieName, sessionValue, {
-      path: '/',
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
-    })
-
-    // Record login activity
-    try {
-      await supabaseAdmin.from('user_logins').insert({
-        user_id: authData.user.id,
-        email: cleanEmail,
-      })
-    } catch {
-      // Non-blocking
-    }
-
-    // Return success AND the session object so the client can sync it
-    return NextResponse.json({ success: true, session: authData.session })
+    return response
   } catch (err: any) {
-    return NextResponse.json({ error: `Fatal Error: ${err.message}` }, { status: 500 })
+    return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
   }
 }
