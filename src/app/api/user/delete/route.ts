@@ -47,6 +47,7 @@ export async function DELETE(request: Request) {
     }
 
     const userId = user.id;
+    const userEmail = user.email || null;
 
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ error: 'CRITICAL: SUPABASE_SERVICE_ROLE_KEY is missing from environment variables.' }, { status: 500 });
@@ -58,8 +59,18 @@ export async function DELETE(request: Request) {
       { auth: { persistSession: false } }
     );
 
-    // Directly delete the user from auth.users. 
-    // Database foreign key cascades will automatically clear all linked tables safely.
+    // Explicitly clean up related public table rows first to prevent foreign key constraint violations
+    await supabaseAdmin.from('claims').delete().eq('user_id', userId);
+    if (userEmail) {
+      await supabaseAdmin.from('messages').delete().eq('email', userEmail);
+      await supabaseAdmin.from('vault').delete().eq('email', userEmail);
+      await supabaseAdmin.from('vault_unlocks').delete().eq('email', userEmail);
+      await supabaseAdmin.from('admin_users').delete().eq('email', userEmail);
+    }
+    await supabaseAdmin.from('shares').delete().eq('user_id', userId);
+    await supabaseAdmin.from('user_logins').delete().eq('user_id', userId);
+
+    // Directly delete the user from auth.users safely on the first try.
     const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(userId);
     
     if (deleteUserError) {
