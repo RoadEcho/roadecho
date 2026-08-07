@@ -882,7 +882,7 @@ export default function VaultDashboard() {
           disabled={isDeletingAccount}
           className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-lg transition disabled:opacity-50 cursor-pointer"
         >
-          {isDeletingAccount ? 'Purging Account Data...' : 'Delete My Account &amp; All Data'}
+          {isDeletingAccount ? 'Purging Account Data...' : 'Delete My Account & All Data'}
         </button>
       </div>
 
