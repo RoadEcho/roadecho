@@ -17,14 +17,13 @@ export async function POST(request: Request) {
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !serviceRoleKey) {
-      console.error('Missing Supabase environment variables on server.')
       return NextResponse.json(
-        { error: 'Server configuration error: Missing Supabase service role key.' },
+        { error: 'Server config error: Missing Supabase URL or Service Role Key.' },
         { status: 500 }
       )
     }
 
-    // Initialize Supabase Service Role client to bypass RLS securely on the server backend
+    // Initialize Supabase Service Role client
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     })
@@ -39,9 +38,9 @@ export async function POST(request: Request) {
       .single()
 
     if (adminError || !adminCheck) {
-      console.error('Admin check failed for email:', cleanEmail, adminError)
+      // Return the exact database error message to the screen for debugging
       return NextResponse.json(
-        { error: 'Access denied. This account is not authorized as an administrator.' },
+        { error: `DB Error: ${adminError?.message || 'No matching admin user row found'}` },
         { status: 403 }
       )
     }
@@ -54,24 +53,13 @@ export async function POST(request: Request) {
 
     if (authError || !authData.user) {
       return NextResponse.json(
-        { error: authError?.message || 'Invalid login credentials.' },
+        { error: `Auth Error: ${authError?.message || 'Invalid login credentials'}` },
         { status: 401 }
       )
     }
 
-    // 3. Record login into user_logins safely
-    try {
-      await supabaseAdmin.from('user_logins').insert({
-        user_id: authData.user.id,
-        email: authData.user.email,
-      })
-    } catch (err) {
-      console.error('Failed to log admin login activity:', err)
-    }
-
     return NextResponse.json({ success: true, session: authData.session })
   } catch (err: any) {
-    console.error('Admin login fatal error:', err)
-    return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: `Fatal Error: ${err.message}` }, { status: 500 })
   }
 }
