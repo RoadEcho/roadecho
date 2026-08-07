@@ -127,10 +127,11 @@ export default function AdminDashboard() {
 
       setAdminEmail(session.user.email)
 
+      // Query by user ID to satisfy the secure RLS policy (auth.uid() = id)
       const { data: adminRecord, error: adminErr } = await supabase
         .from('admin_users')
         .select('email')
-        .eq('email', session.user.email)
+        .eq('id', session.user.id)
         .single()
 
       if (adminErr || !adminRecord) {
